@@ -1,1 +1,1 @@
-﻿web: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python -m app.main
+﻿web: Xvfb :99 -screen 0 1920x1080x24 & export DISPLAY=:99 && python -m app.main

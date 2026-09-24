@@ -19,5 +19,5 @@ RUN playwright install-deps chrome
 # Copy application files
 COPY app/ ./app/
 
-# Start command using xvfb-run to simulate a real monitor
-CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1920x1080x24", "python", "-m", "app.main"]
+# Start command
+CMD sh -c "Xvfb :99 -screen 0 1920x1080x24 & python -m app.main"
