@@ -12,6 +12,8 @@ import urllib.parse
 from contextlib import asynccontextmanager
 
 from app.translator import translate_text
+from app.bot_scraper import run_bot
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +50,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet conectado! Escuchando subtítulos..."})
+                elif mode == "bot":
+                    url = data.get("url")
+                    if url:
+                        asyncio.create_task(run_bot(url, websocket))
+                    else:
+                        await websocket.send_json({"type": "status", "message": "Error: URL inválida."})
                     
             elif data.get("action") == "caption":
                 text = data.get("text")
