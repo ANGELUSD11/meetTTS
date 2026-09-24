@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Súper Marcador V4 (Limpio)!');
+    console.log('[AI Meet] Súper Marcador V5 (Smart Cloud Sync)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('El bot ya esta corriendo.');
         return;
@@ -64,8 +64,6 @@
     }
 
     let lastSentText = '';
-    let pendingBuffer = [];
-    let idleTicks = 0;
 
     setInterval(() => {
         let text = '';
@@ -78,73 +76,11 @@
         text = text.replace(garbageRegex, ' ');
         text = text.replace(/\s+/g, ' ').trim();
 
-        if (!text) {
-            idleTicks++;
-            if (pendingBuffer.length > 0 && idleTicks >= 2) {
-                iframe.contentWindow.postMessage({action: 'caption', text: pendingBuffer.join(' ')}, '*');
-                pendingBuffer = [];
-            }
-            if (idleTicks >= 2) lastSentText = '';
-            return;
-        }
-
-        if (text === lastSentText) {
-            idleTicks++;
-            if (pendingBuffer.length > 0 && idleTicks >= 2) {
-                iframe.contentWindow.postMessage({action: 'caption', text: pendingBuffer.join(' ')}, '*');
-                pendingBuffer = [];
-            }
-            return;
-        }
-
-        idleTicks = 0;
-
-        if (lastSentText === '') {
-            lastSentText = text;
-            pendingBuffer = text.split(' ');
-            return;
-        }
-
-        const normalize = (w) => w.replace(/[.,?!]/g, '').toLowerCase();
-        let oldWordsRaw = lastSentText.split(' ');
-        let newWordsRaw = text.split(' ');
-        let oldWords = oldWordsRaw.map(normalize);
-        let newWords = newWordsRaw.map(normalize);
-
-        let newDiff = [];
-        let foundOverlap = false;
-        
-        for (let i = 0; i < oldWords.length; i++) {
-            let match = true;
-            let matchSize = 0;
-            for (let j = 0; j < oldWords.length - i; j++) {
-                if (j >= newWords.length || oldWords[i+j] !== newWords[j]) { match = false; break; }
-                matchSize++;
-            }
-            if (match && matchSize >= Math.min(2, oldWords.length)) {
-                newDiff = newWordsRaw.slice(matchSize);
-                foundOverlap = true;
-                break;
-            }
-        }
-
-        if (foundOverlap) {
-            if (newDiff.length > 0) {
-                pendingBuffer.push(...newDiff);
-                lastSentText = text;
-            }
-        } else if (newWordsRaw.length >= 2) {
-            pendingBuffer.push(...newWordsRaw);
+        if (text && text !== lastSentText) {
+            // Mandamos todo el cuadro de texto limpio al servidor Python.
+            // Python se encargará de hacer el "Diff" inteligente y extraer solo las palabras nuevas.
+            iframe.contentWindow.postMessage({action: 'caption', text: text}, '*');
             lastSentText = text;
         }
-
-        if (pendingBuffer.length > 0) {
-            let textToCheck = pendingBuffer.join(' ');
-            let lastChar = textToCheck.trim().slice(-1);
-            if (pendingBuffer.length >= 4 || ['.', '?', '!', ','].includes(lastChar)) {
-                iframe.contentWindow.postMessage({action: 'caption', text: textToCheck}, '*');
-                pendingBuffer = [];
-            }
-        }
-    }, 1000);
+    }, 1500); // 1.5 segundos para no saturar
 })();

@@ -2,6 +2,7 @@
 import os
 import base64
 import io
+import difflib
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -26,17 +27,21 @@ templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 active_websockets = set()
 translation_queue = asyncio.Queue()
 
+# Global state for diffing
+global_last_text = ""
+global_sentence_buffer = []
+
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
-    # Read the raw bookmarklet JS code to pass to the template
     bookmarklet_path = os.path.join(base_dir, "static", "bookmarklet.js")
     with open(bookmarklet_path, "r", encoding="utf-8") as f:
         raw_js = f.read()
-    
     return templates.TemplateResponse(request=request, name="index.html", context={"raw_js": raw_js})
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    global global_last_text, global_sentence_buffer
+    
     await websocket.accept()
     active_websockets.add(websocket)
     
@@ -50,18 +55,48 @@ async def websocket_endpoint(websocket: WebSocket):
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet conectado! Escuchando subtítulos..."})
+                    # Reset state on new connection
+                    global_last_text = ""
+                    global_sentence_buffer = []
                     
             elif data.get("action") == "caption":
-                text = data.get("text")
-                if text:
-                    print(f"[Bot] Texto a traducir: {text}")
-                    for ws in active_websockets:
-                        try:
-                            await ws.send_json({"type": "caption", "text": text})
-                        except:
-                            pass
-                    await translation_queue.put(text)
-    
+                current_text = data.get("text", "").strip()
+                if not current_text:
+                    continue
+                
+                # If the caption box was cleared by Meet (new string is much smaller or completely different)
+                # and we have no overlap, treat it as a new block.
+                old_words = global_last_text.split()
+                new_words = current_text.split()
+                
+                s = difflib.SequenceMatcher(None, old_words, new_words)
+                new_chunk = []
+                
+                for tag, i1, i2, j1, j2 in s.get_opcodes():
+                    if tag in ('insert', 'replace'):
+                        # Only accept changes that touch the VERY END of the new string
+                        if j2 == len(new_words):
+                            new_chunk.extend(new_words[j1:j2])
+                
+                # If there's new text, buffer it
+                if new_chunk:
+                    global_sentence_buffer.extend(new_chunk)
+                    global_last_text = current_text
+                    
+                    buffer_str = " ".join(global_sentence_buffer)
+                    last_char = buffer_str[-1] if buffer_str else ""
+                    
+                    # Flush condition: ends with punctuation OR > 6 words
+                    if last_char in ['.', '?', '!', ','] or len(global_sentence_buffer) >= 6:
+                        print(f"[Bot] Texto a traducir: {buffer_str}")
+                        for ws in active_websockets:
+                            try:
+                                await ws.send_json({"type": "caption", "text": buffer_str})
+                            except:
+                                pass
+                        await translation_queue.put(buffer_str)
+                        global_sentence_buffer = []
+                        
     except WebSocketDisconnect:
         print("[Bot] Cliente desconectado")
         active_websockets.discard(websocket)
@@ -73,7 +108,6 @@ async def translation_worker():
     while True:
         try:
             text = await translation_queue.get()
-            
             translated = await translate_text(text)
             print(f"[Traducido] {translated}")
             
