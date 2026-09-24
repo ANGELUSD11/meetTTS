@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meet Interpreter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">
+                <i class="fas fa-robot mr-2"></i>AI Google Meet Interpreter
+            </h1>
+            <p class="text-gray-400">Live Translation & TTS Powered by Groq</p>
+        </header>
+
+        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 mb-8 border border-gray-700">
+            <div class="bg-blue-900/40 border border-blue-500 rounded-lg p-6 text-center">
+                <h3 class="text-xl font-bold mb-4">La solución definitiva para usuarios normales</h3>
+                <p class="mb-4 text-gray-300">Google Meet bloquea agresivamente a los bots automatizados. Para que cualquier persona pueda usar esto sin configuraciones técnicas, usa este botón mágico:</p>
+                <a id="bookmarklet" href="javascript:%28function%28%29%7B%0A%20%20%20%20console.log%28%27AI%20Meet%20Interpreter%20Bookmarklet%20Injected%21%27%29%3B%0A%20%20%20%20if%20%28document.getElementById%28%27ai-meet-bridge%27%29%29%20%7B%0A%20%20%20%20%20%20%20%20alert%28%27El%20bot%20ya%20esta%20corriendo%20en%20esta%20pesta%C3%B1a.%27%29%3B%0A%20%20%20%20%20%20%20%20return%3B%0A%20%20%20%20%7D%0A%0A%20%20%20%20//%20Create%20the%20iframe%20bridge%20to%20bypass%20CSP%0A%20%20%20%20const%20iframe%20%3D%20document.createElement%28%27iframe%27%29%3B%0A%20%20%20%20iframe.id%20%3D%20%27ai-meet-bridge%27%3B%0A%20%20%20%20iframe.src%20%3D%20%27http%3A//localhost%3A8000/bridge.html%27%3B%20//%20Or%20HTTPS%20on%20Railway%0A%20%20%20%20iframe.style.display%20%3D%20%27none%27%3B%0A%20%20%20%20document.body.appendChild%28iframe%29%3B%0A%0A%20%20%20%20//%20Create%20UI%20overlay%0A%20%20%20%20const%20overlay%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20overlay.id%20%3D%20%27ai-meet-overlay%27%3B%0A%20%20%20%20overlay.style.position%20%3D%20%27fixed%27%3B%0A%20%20%20%20overlay.style.bottom%20%3D%20%2720px%27%3B%0A%20%20%20%20overlay.style.right%20%3D%20%2720px%27%3B%0A%20%20%20%20overlay.style.background%20%3D%20%27rgba%2815%2C%2023%2C%2042%2C%200.9%29%27%3B%0A%20%20%20%20overlay.style.color%20%3D%20%27white%27%3B%0A%20%20%20%20overlay.style.padding%20%3D%20%2715px%2025px%27%3B%0A%20%20%20%20overlay.style.borderRadius%20%3D%20%2712px%27%3B%0A%20%20%20%20overlay.style.fontFamily%20%3D%20%27sans-serif%27%3B%0A%20%20%20%20overlay.style.zIndex%20%3D%20%27999999%27%3B%0A%20%20%20%20overlay.style.border%20%3D%20%271px%20solid%20%233b82f6%27%3B%0A%20%20%20%20overlay.style.boxShadow%20%3D%20%270%2010px%2025px%20-5px%20rgba%280%2C%200%2C%200%2C%200.5%29%27%3B%0A%20%20%20%20overlay.innerHTML%20%3D%20%27%3Cb%20style%3D%22color%3A%233b82f6%3B%22%3E%F0%9F%8E%99%EF%B8%8F%20AI%20Interpreter%3C/b%3E%3Cbr%3E%3Cspan%20id%3D%22ai-status%22%3EConectando%20iframe...%3C/span%3E%27%3B%0A%20%20%20%20document.body.appendChild%28overlay%29%3B%0A%0A%20%20%20%20//%20Listen%20for%20status%20from%20the%20iframe%0A%20%20%20%20window.addEventListener%28%27message%27%2C%20%28event%29%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20if%20%28event.data%20%26%26%20event.data.type%20%3D%3D%3D%20%27status%27%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20document.getElementById%28%27ai-status%27%29.innerText%20%3D%20event.data.message%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%29%3B%0A%0A%20%20%20%20let%20lastSentText%20%3D%20%27%27%3B%0A%20%20%20%20let%20pendingBuffer%20%3D%20%5B%5D%3B%0A%20%20%20%20let%20idleTicks%20%3D%200%3B%0A%0A%20%20%20%20setInterval%28%28%29%20%3D%3E%20%7B%0A%20%20%20%20%20%20%20%20let%20text%20%3D%20%27%27%3B%0A%20%20%20%20%20%20%20%20let%20elements%20%3D%20document.querySelectorAll%28%27.a4cQT%2C%20.CNusmb%27%29%3B%0A%20%20%20%20%20%20%20%20elements.forEach%28el%20%3D%3E%20text%20%2B%3D%20el.innerText%20%2B%20%27%20%27%29%3B%0A%20%20%20%20%20%20%20%20text%20%3D%20text.trim%28%29%3B%0A%0A%20%20%20%20%20%20%20%20const%20garbage%20%3D%20%5B%27language%27%2C%20%27Espa%C3%B1ol%27%2C%20%27M%C3%A9xico%27%2C%20%27format_size%27%2C%20%27Tama%C3%B1o%20de%20fuente%27%2C%20%27circle%27%2C%20%27Color%20de%20la%20fuente%27%2C%20%27settings%27%2C%20%27Abrir%20configuraci%C3%B3n%20de%20subt%C3%ADtulos%27%2C%20%27T%C3%BA%27%2C%20%27%28M%C3%A9xico%29%27%2C%20%27%28Espa%C3%B1a%29%27%5D%3B%0A%20%20%20%20%20%20%20%20for%20%28let%20g%20of%20garbage%29%20%7B%20text%20%3D%20text.replace%28new%20RegExp%28g%2C%20%27gi%27%29%2C%20%27%27%29%3B%20%7D%0A%20%20%20%20%20%20%20%20text%20%3D%20text.replace%28/%5Cs%2B/g%2C%20%27%20%27%29.trim%28%29%3B%0A%0A%20%20%20%20%20%20%20%20if%20%28%21text%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20idleTicks%2B%2B%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20%28pendingBuffer.length%20%3E%200%20%26%26%20idleTicks%20%3E%3D%203%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20iframe.contentWindow.postMessage%28%7Baction%3A%20%27caption%27%2C%20text%3A%20pendingBuffer.join%28%27%20%27%29%7D%2C%20%27%2A%27%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20pendingBuffer%20%3D%20%5B%5D%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20idleTicks%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20return%3B%0A%20%20%20%20%20%20%20%20%7D%0A%0A%20%20%20%20%20%20%20%20if%20%28lastSentText%20%3D%3D%3D%20%27%27%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20lastSentText%20%3D%20text%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20return%3B%0A%20%20%20%20%20%20%20%20%7D%0A%0A%20%20%20%20%20%20%20%20const%20normalize%20%3D%20%28w%29%20%3D%3E%20w.replace%28/%5B.%2C%3F%21%5D/g%2C%20%27%27%29.toLowerCase%28%29%3B%0A%20%20%20%20%20%20%20%20let%20oldWordsRaw%20%3D%20lastSentText.split%28%27%20%27%29%3B%0A%20%20%20%20%20%20%20%20let%20newWordsRaw%20%3D%20text.split%28%27%20%27%29%3B%0A%20%20%20%20%20%20%20%20let%20oldWords%20%3D%20oldWordsRaw.map%28normalize%29%3B%0A%20%20%20%20%20%20%20%20let%20newWords%20%3D%20newWordsRaw.map%28normalize%29%3B%0A%0A%20%20%20%20%20%20%20%20let%20newDiff%20%3D%20%5B%5D%3B%0A%20%20%20%20%20%20%20%20let%20foundOverlap%20%3D%20false%3B%0A%20%20%20%20%20%20%20%20%0A%20%20%20%20%20%20%20%20for%20%28let%20i%20%3D%200%3B%20i%20%3C%20oldWords.length%3B%20i%2B%2B%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20match%20%3D%20true%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20matchSize%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20for%20%28let%20j%20%3D%200%3B%20j%20%3C%20oldWords.length%20-%20i%3B%20j%2B%2B%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20if%20%28j%20%3E%3D%20newWords.length%20%7C%7C%20oldWords%5Bi%2Bj%5D%20%21%3D%3D%20newWords%5Bj%5D%29%20%7B%20match%20%3D%20false%3B%20break%3B%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20matchSize%2B%2B%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20%28match%20%26%26%20matchSize%20%3E%3D%20Math.min%283%2C%20oldWords.length%29%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20newDiff%20%3D%20newWordsRaw.slice%28matchSize%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20foundOverlap%20%3D%20true%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20break%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%0A%20%20%20%20%20%20%20%20if%20%28foundOverlap%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20%28newDiff.length%20%3E%200%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20pendingBuffer.push%28...newDiff%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20lastSentText%20%3D%20text%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%20else%20if%20%28newWordsRaw.length%20%3E%3D%202%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20pendingBuffer.push%28...newWordsRaw%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20lastSentText%20%3D%20text%3B%0A%20%20%20%20%20%20%20%20%7D%0A%0A%20%20%20%20%20%20%20%20if%20%28pendingBuffer.length%20%3E%200%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20textToCheck%20%3D%20pendingBuffer.join%28%27%20%27%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20let%20lastChar%20%3D%20textToCheck.trim%28%29.slice%28-1%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20%28pendingBuffer.length%20%3E%3D%205%20%7C%7C%20%5B%27.%27%2C%20%27%3F%27%2C%20%27%21%27%2C%20%27%2C%27%5D.includes%28lastChar%29%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20iframe.contentWindow.postMessage%28%7Baction%3A%20%27caption%27%2C%20text%3A%20textToCheck%7D%2C%20%27%2A%27%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20pendingBuffer%20%3D%20%5B%5D%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20idleTicks%20%3D%200%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%2C%201000%29%3B%0A%7D%29%28%29%3B" 
+                   class="inline-block bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105 cursor-grab">
+                    <i class="fas fa-bookmark mr-2"></i> Traducir Google Meet
+                </a>
+                <p class="mt-4 text-sm text-gray-400"><strong>Paso 1:</strong> Arrastra este botón a tu barra de marcadores/favoritos.<br><strong>Paso 2:</strong> Entra a tu videollamada de Google Meet (enciende los subtítulos).<br><strong>Paso 3:</strong> ¡Haz clic en el marcador que guardaste! Se conectará mágicamente al servidor mediante un túnel seguro.</p>
+            </div>
+            <p id="status" class="mt-4 text-sm text-gray-400 flex items-center gap-2">
+                <i class="fas fa-circle text-red-500"></i> Disconnected
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Original Captions -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 h-[400px] flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-gray-300 border-b border-gray-700 pb-2">
+                    <i class="fas fa-closed-captioning mr-2"></i>Original Text
+                </h2>
+                <div id="originalBox" class="flex-1 overflow-y-auto space-y-3 font-mono text-sm text-gray-400">
+                    <!-- Captions go here -->
+                </div>
+            </div>
+
+            <!-- Translated Text -->
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 h-[400px] flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400 border-b border-gray-700 pb-2">
+                    <i class="fas fa-language mr-2"></i>Translation (Spanish)
+                </h2>
+                <div id="translatedBox" class="flex-1 overflow-y-auto space-y-3 text-lg">
+                    <!-- Translations go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let audioQueue = [];
+        let isPlaying = false;
+
+        function connectWebSocket() {
+            ws = new WebSocket((window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws');
+            
+            ws.onmessage = async function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'status') {
+                    const statusEl = document.getElementById('status');
+                    statusEl.innerHTML = '<i class="fas fa-circle text-green-500"></i> ' + data.message;
+                }
+                else if (data.type === 'caption') {
+                    const box = document.getElementById('originalBox');
+                    box.innerHTML += '<div class="p-2 bg-gray-900 rounded border-l-2 border-gray-600">' + data.text + '</div>';
+                    box.scrollTop = box.scrollHeight;
+                }
+                else if (data.type === 'translation') {
+                    const box = document.getElementById('translatedBox');
+                    box.innerHTML += '<div class="p-3 bg-blue-900/30 rounded-lg border-l-4 border-blue-500">' + data.text + '</div>';
+                    box.scrollTop = box.scrollHeight;
+                }
+                else if (data.type === 'audio') {
+                    // data.audio is base64
+                    audioQueue.push('data:audio/mp3;base64,' + data.audio);
+                    playNextAudio();
+                }
+            };
+            
+            ws.onclose = () => {
+                document.getElementById('status').innerHTML = '<i class="fas fa-circle text-red-500"></i> Disconnected. Retrying...';
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        async function playNextAudio() {
+            if (isPlaying || audioQueue.length === 0) return;
+            isPlaying = true;
+            
+            const audioSrc = audioQueue.shift();
+            const audio = new Audio(audioSrc);
+            
+            audio.onended = () => {
+                isPlaying = false;
+                playNextAudio();
+            };
+            
+            try {
+                await audio.play();
+            } catch (e) {
+                console.error("Audio playback failed (browser auto-play policy?):", e);
+                isPlaying = false;
+                playNextAudio();
+            }
+        }
+
+        function joinMeet(mode) {
+            const url = document.getElementById('meetUrl').value;
+            if (mode === 'bot' && !url) return alert('Enter a Meet URL for the bot to join');
+            
+            document.getElementById('joinBtn').disabled = true;
+            const localBtn = document.getElementById('localBtn');
+            if (localBtn) localBtn.disabled = true;
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'join', url: url, mode: mode}));
+            }
+        }
+
+        // Initialize
+        connectWebSocket();
+    </script>
+</body>
+</html>
