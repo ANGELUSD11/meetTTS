@@ -83,6 +83,10 @@ async def translation_worker():
                 except:
                     pass
             
+            if not translated or not translated.strip():
+                translation_queue.task_done()
+                continue
+
             # Generate TTS
             tts = gTTS(text=translated, lang='es', tld='com.mx')
             fp = io.BytesIO()
