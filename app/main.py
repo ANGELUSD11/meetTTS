@@ -8,7 +8,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.staticfiles import StaticFiles
 from gtts import gTTS
-import urllib.parse
 from contextlib import asynccontextmanager
 
 from app.translator import translate_text
@@ -24,20 +23,23 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 
-# LIST of all connected websockets (Dashboard + Bookmarklets)
 active_websockets = set()
 translation_queue = asyncio.Queue()
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    # Read the raw bookmarklet JS code to pass to the template
+    bookmarklet_path = os.path.join(base_dir, "static", "bookmarklet.js")
+    with open(bookmarklet_path, "r", encoding="utf-8") as f:
+        raw_js = f.read()
+    
+    return templates.TemplateResponse(request=request, name="index.html", context={"raw_js": raw_js})
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_websockets.add(websocket)
     
-    # Immediately send a connection success to whatever just connected
     await websocket.send_json({"type": "status", "message": "Servidor listo y escuchando."})
     
     try:
@@ -53,7 +55,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 text = data.get("text")
                 if text:
                     print(f"[Bot] Texto a traducir: {text}")
-                    # Broadcast the original text to all clients (so Dashboard can show it)
                     for ws in active_websockets:
                         try:
                             await ws.send_json({"type": "caption", "text": text})
@@ -76,7 +77,6 @@ async def translation_worker():
             translated = await translate_text(text)
             print(f"[Traducido] {translated}")
             
-            # Broadcast translation text
             for ws in list(active_websockets):
                 try:
                     await ws.send_json({"type": "translation", "text": translated})
@@ -87,14 +87,12 @@ async def translation_worker():
                 translation_queue.task_done()
                 continue
 
-            # Generate TTS
             tts = gTTS(text=translated, lang='es', tld='com.mx')
             fp = io.BytesIO()
             tts.write_to_fp(fp)
             fp.seek(0)
             audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
             
-            # Broadcast audio
             for ws in list(active_websockets):
                 try:
                     await ws.send_json({"type": "audio", "audio": audio_base64})
