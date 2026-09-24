@@ -1,6 +1,6 @@
 ﻿import asyncio
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth
 import re
 
 async def run_bot(url, websocket):
@@ -30,7 +30,8 @@ async def run_bot(url, websocket):
         )
         
         page = await context.new_page()
-        await stealth_async(page)
+        stealth = Stealth()
+        await stealth.apply_stealth_async(page)
         
         await websocket.send_json({"type": "status", "message": "Navegando a la llamada..."})
         
