@@ -1,11 +1,11 @@
 ﻿(function(){
-    console.log('[AI Meet] Súper Marcador V5 (Smart Cloud Sync)!');
+    console.log('[AI Meet] Super Bookmarklet V5 (Smart Cloud Sync)!');
     if (document.getElementById('ai-meet-bridge')) {
-        alert('El bot ya esta corriendo.');
+        alert('The bot is already running.');
         return;
     }
 
-    let wsDomain = window.prompt("Ingresa la URL de tu servidor TTS Meet (sin https://):", "web-production-ad4ac.up.railway.app");
+    let wsDomain = window.prompt("Enter your TTS Meet server URL (without https://):", "web-production-ad4ac.up.railway.app");
     if (!wsDomain) return;
     wsDomain = wsDomain.replace('http://', '').replace('https://', '').replace(/\/$/, '');
 
@@ -21,22 +21,24 @@
     overlay.style.position = 'fixed';
     overlay.style.bottom = '20px';
     overlay.style.right = '20px';
-    overlay.style.background = 'rgba(15, 23, 42, 0.9)';
-    overlay.style.color = 'white';
-    overlay.style.padding = '15px 25px';
-    overlay.style.borderRadius = '12px';
-    overlay.style.fontFamily = 'sans-serif';
+    overlay.style.background = 'rgba(255, 255, 255, 0.95)';
+    overlay.style.color = '#202124';
+    overlay.style.padding = '16px 24px';
+    overlay.style.borderRadius = '8px';
+    overlay.style.fontFamily = 'Roboto, Arial, sans-serif';
     overlay.style.zIndex = '999999';
-    overlay.style.border = '1px solid #3b82f6';
-    overlay.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
+    overlay.style.border = '1px solid #dadce0';
+    overlay.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
     
     const title = document.createElement('b');
-    title.style.color = '#3b82f6';
+    title.style.color = '#1a73e8';
     title.textContent = '🎙️ AI Interpreter';
     const br = document.createElement('br');
     const statusSpan = document.createElement('span');
     statusSpan.id = 'ai-status';
-    statusSpan.textContent = 'Conectando túnel...';
+    statusSpan.style.fontSize = '13px';
+    statusSpan.style.color = '#5f6368';
+    statusSpan.textContent = 'Connecting tunnel...';
     
     overlay.appendChild(title);
     overlay.appendChild(br);
@@ -77,10 +79,8 @@
         text = text.replace(/\s+/g, ' ').trim();
 
         if (text && text !== lastSentText) {
-            // Mandamos todo el cuadro de texto limpio al servidor Python.
-            // Python se encargará de hacer el "Diff" inteligente y extraer solo las palabras nuevas.
             iframe.contentWindow.postMessage({action: 'caption', text: text}, '*');
             lastSentText = text;
         }
-    }, 1500); // 1.5 segundos para no saturar
+    }, 1500);
 })();

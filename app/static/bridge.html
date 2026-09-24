@@ -9,18 +9,17 @@
         let ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-            window.parent.postMessage({type: 'status', message: '✅ Escuchando subtítulos'}, '*');
+            window.parent.postMessage({type: 'status', message: '✅ Listening to captions'}, '*');
             ws.send(JSON.stringify({action: 'join', mode: 'bookmarklet'}));
         };
 
         ws.onclose = () => {
-            window.parent.postMessage({type: 'status', message: '❌ Desconectado'}, '*');
+            window.parent.postMessage({type: 'status', message: '❌ Disconnected'}, '*');
         };
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === 'audio') {
-                // Forward to bookmarklet to bypass iframe autoplay policy
                 window.parent.postMessage({type: 'audio', audio: data.audio}, '*');
             }
         };
