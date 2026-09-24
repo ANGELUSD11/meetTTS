@@ -23,29 +23,7 @@ If you want to host your own version (highly recommended to avoid rate limits on
 - **Python 3.10+** installed on your machine.
 - A free API key from [Groq](https://console.groq.com/keys) OR [Google Gemini](https://aistudio.google.com/app/apikey).
 
-### 2. Installation Steps
-
-Open your terminal or command prompt and run the following commands:
-
-`ash
-# Clone the repository
-git clone https://github.com/ANGELUSD11/meetTTS.git
-cd meetTTS
-
-# Create a virtual environment (optional but recommended)
-python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On Mac/Linux:
-source venv/bin/activate
-
-# Install the required dependencies
-pip install -r requirements.txt
-`
-
-### 3. Environment Variables
+### 2. Environment Variables
 Create a file named .env in the root folder of the project and paste your API key inside:
 
 `env
@@ -53,12 +31,18 @@ GROQ_API_KEY=your_groq_key_here
 `
 *(If you prefer to use Google Gemini, use GEMINI_API_KEY=your_gemini_key_here instead).*
 
-### 4. Start the Server
+### 3. Quick Start (1-Click)
+
+**For Windows:**
+Simply double-click the start.bat file in the project folder. It will automatically create a virtual environment, install dependencies, and launch the server.
+
+**For Mac / Linux:**
+Open your terminal and run:
 `ash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+bash start.sh
 `
 
-### 5. Start Translating!
+### 4. Start Translating!
 1. Open your browser and go to http://localhost:8000
 2. You will see the **Google Meet Interpreter** Dashboard.
 3. Drag the **Translate Google Meet** button to your browser's bookmarks bar.
