@@ -1,6 +1,6 @@
 ﻿# 🎙️ Google Meet AI Interpreter (meetTTS)
 
-An open-source, zero-configuration real-time translation tool for Google Meet. It captures closed captions directly from your browser, translates them instantly using **Groq (Llama 3.1)** or **Google Gemini**, and speaks them out loud using Google Text-to-Speech (gTTS).
+An open-source, zero-configuration real-time translation tool for Google Meet. It captures closed captions directly from your browser, translates them instantly using **GPT-OSS 20B** (via OpenAI-compatible endpoints) or **Google Gemini**, and speaks them out loud using Google Text-to-Speech (gTTS).
 
 ![Dark Mode UI](https://img.shields.io/badge/UI-Material_Design_3-blue) ![Language](https://img.shields.io/badge/Language-Python_3.12-yellow) ![License](https://img.shields.io/badge/License-Free-green)
 
@@ -8,7 +8,7 @@ An open-source, zero-configuration real-time translation tool for Google Meet. I
 
 ## ✨ Features
 - **Zero Configuration:** Works via a simple browser Bookmarklet. No extensions to install, no sketchy bots joining your calls.
-- **Ultra-Fast Translation:** Powered by Groq's Llama 3.1 8B Instant model.
+- **Ultra-Fast Translation:** Powered by the GPT-OSS 20B model infrastructure.
 - **Multi-language Support:** Instantly switch between Spanish, English, French, German, Italian, Portuguese, Japanese, and Chinese.
 - **Smart Diffing:** Python backend ignores Google Meet's live typo-corrections and prevents repetitive, robotic TTS loops.
 - **Dark Mode:** Clean, Material Design 3 interface that auto-detects your system preferences.
@@ -21,13 +21,13 @@ If you want to host your own version (highly recommended to avoid rate limits on
 
 ### 1. Prerequisites
 - **Python 3.10+** installed on your machine.
-- A free API key from [Groq](https://console.groq.com/keys) OR [Google Gemini](https://aistudio.google.com/app/apikey).
+- A free API key configured for OpenAI-compatible endpoints (GROQ_API_KEY) OR Google Gemini (GEMINI_API_KEY).
 
 ### 2. Environment Variables
 Create a file named .env in the root folder of the project and paste your API key inside:
 
 `env
-GROQ_API_KEY=your_groq_key_here
+GROQ_API_KEY=your_api_key_here
 `
 *(If you prefer to use Google Gemini, use GEMINI_API_KEY=your_gemini_key_here instead).*
 
