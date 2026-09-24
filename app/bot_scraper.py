@@ -10,7 +10,7 @@ async def run_bot(url, websocket):
     async with async_playwright() as p:
         # Usar argumentos para evadir detección básica
         browser = await p.chromium.launch(channel='chrome',
-            headless=True,
+            headless=False,
             args=[
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
