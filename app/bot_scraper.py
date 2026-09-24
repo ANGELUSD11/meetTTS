@@ -107,6 +107,13 @@ async def run_bot(url, websocket):
                 
         except Exception as e:
             print(f"[Bot Error]: {e}")
-            await websocket.send_json({"type": "status", "message": f"Error del bot: {str(e)}"})
+            try:
+                import base64
+                screenshot_bytes = await page.screenshot()
+                b64 = base64.b64encode(screenshot_bytes).decode('utf-8')
+                html_msg = f"Error del bot: {str(e)} <br><br><b>Lo que vio el bot (Captura):</b><br><img src='data:image/png;base64,{b64}' style='max-width:100%; border-radius:8px;' />"
+                await websocket.send_json({"type": "status", "message": html_msg})
+            except Exception as ss_e:
+                await websocket.send_json({"type": "status", "message": f"Error del bot: {str(e)} (No se pudo capturar pantalla: {ss_e})"})
         finally:
             await browser.close()
