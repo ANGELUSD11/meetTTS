@@ -3,5 +3,5 @@ title AI Google Meet Interpreter
 echo ==============================================
 echo   Iniciando AI Google Meet Interpreter...
 echo ==============================================
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run python app/main.py
 pause
