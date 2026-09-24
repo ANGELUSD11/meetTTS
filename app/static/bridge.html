@@ -7,8 +7,6 @@
     <script>
         const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws';
         let ws = new WebSocket(wsUrl);
-        let audioQueue = [];
-        let isPlaying = false;
 
         ws.onopen = () => {
             window.parent.postMessage({type: 'status', message: '✅ Escuchando subtítulos'}, '*');
@@ -19,28 +17,11 @@
             window.parent.postMessage({type: 'status', message: '❌ Desconectado'}, '*');
         };
 
-        async function playNextAudio() {
-            if (isPlaying || audioQueue.length === 0) return;
-            isPlaying = true;
-            const audio = new Audio(audioQueue.shift());
-            audio.onended = () => {
-                isPlaying = false;
-                playNextAudio();
-            };
-            try {
-                await audio.play();
-            } catch (e) {
-                console.error('Audio block:', e);
-                isPlaying = false;
-                playNextAudio();
-            }
-        }
-
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             if (data.type === 'audio') {
-                audioQueue.push('data:audio/mp3;base64,' + data.audio);
-                playNextAudio();
+                // Forward to bookmarklet to bypass iframe autoplay policy
+                window.parent.postMessage({type: 'audio', audio: data.audio}, '*');
             }
         };
 
