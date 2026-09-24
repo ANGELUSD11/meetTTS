@@ -24,7 +24,8 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 
-active_websocket = None
+# LIST of all connected websockets (Dashboard + Bookmarklets)
+active_websockets = set()
 translation_queue = asyncio.Queue()
 
 @app.get("/", response_class=HTMLResponse)
@@ -33,9 +34,11 @@ async def get_index(request: Request):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    global active_websocket
     await websocket.accept()
-    active_websocket = websocket
+    active_websockets.add(websocket)
+    
+    # Immediately send a connection success to whatever just connected
+    await websocket.send_json({"type": "status", "message": "Servidor listo y escuchando."})
     
     try:
         while True:
@@ -45,26 +48,27 @@ async def websocket_endpoint(websocket: WebSocket):
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet conectado! Escuchando subtítulos..."})
-                else:
-                    await websocket.send_json({"type": "status", "message": "Conectado. Usa el marcador para enviar subtítulos."})
                     
             elif data.get("action") == "caption":
                 text = data.get("text")
                 if text:
                     print(f"[Bot] Texto a traducir: {text}")
+                    # Broadcast the original text to all clients (so Dashboard can show it)
+                    for ws in active_websockets:
+                        try:
+                            await ws.send_json({"type": "caption", "text": text})
+                        except:
+                            pass
                     await translation_queue.put(text)
     
     except WebSocketDisconnect:
         print("[Bot] Cliente desconectado")
-        if active_websocket == websocket:
-            active_websocket = None
+        active_websockets.discard(websocket)
     except Exception as e:
         print(f"[Error WebSocket]: {e}")
-        if active_websocket == websocket:
-            active_websocket = None
+        active_websockets.discard(websocket)
 
 async def translation_worker():
-    global active_websocket
     while True:
         try:
             text = await translation_queue.get()
@@ -72,17 +76,26 @@ async def translation_worker():
             translated = await translate_text(text)
             print(f"[Traducido] {translated}")
             
+            # Broadcast translation text
+            for ws in list(active_websockets):
+                try:
+                    await ws.send_json({"type": "translation", "text": translated})
+                except:
+                    pass
+            
+            # Generate TTS
             tts = gTTS(text=translated, lang='es', tld='com.mx')
             fp = io.BytesIO()
             tts.write_to_fp(fp)
             fp.seek(0)
             audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
             
-            if active_websocket:
-                await active_websocket.send_json({
-                    "type": "audio",
-                    "audio": audio_base64
-                })
+            # Broadcast audio
+            for ws in list(active_websockets):
+                try:
+                    await ws.send_json({"type": "audio", "audio": audio_base64})
+                except:
+                    pass
             
             translation_queue.task_done()
         except Exception as e:
