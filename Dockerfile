@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application files
 COPY app/ ./app/
 
-# Start command (Python handles the PORT variable)
-CMD ["python", "app/main.py"]
+# Start command as a module so "app" is recognized in sys.path
+CMD ["python", "-m", "app.main"]
