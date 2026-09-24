@@ -10,9 +10,9 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Let Playwright install Chromium and all its required system dependencies automatically
-RUN playwright install chromium
-RUN playwright install-deps chromium
+# Install the proprietary Google Chrome instead of open-source Chromium
+RUN playwright install chrome
+RUN playwright install-deps chrome
 
 # Copy application files
 COPY app/ ./app/
