@@ -27,9 +27,24 @@ templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 active_websockets = set()
 translation_queue = asyncio.Queue()
 
-# Global state for diffing
+# Global state for diffing and language
 global_last_text = ""
 global_sentence_buffer = []
+
+# Default Language
+global_target_lang_name = "Spanish"
+global_target_lang_code = "es"
+
+LANGUAGE_MAP = {
+    "es": "Spanish",
+    "en": "English",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ja": "Japanese",
+    "zh": "Chinese"
+}
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
@@ -41,21 +56,28 @@ async def get_index(request: Request):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     global global_last_text, global_sentence_buffer
+    global global_target_lang_name, global_target_lang_code
     
     await websocket.accept()
     active_websockets.add(websocket)
     
-    await websocket.send_json({"type": "status", "message": "Servidor listo y escuchando."})
+    await websocket.send_json({"type": "status", "message": "Connected to server."})
     
     try:
         while True:
             data = await websocket.receive_json()
             
-            if data.get("action") == "join":
+            if data.get("action") == "set_language":
+                lang_code = data.get("lang")
+                if lang_code in LANGUAGE_MAP:
+                    global_target_lang_code = lang_code
+                    global_target_lang_name = LANGUAGE_MAP[lang_code]
+                    print(f"[Bot] Language changed to {global_target_lang_name}")
+            
+            elif data.get("action") == "join":
                 mode = data.get("mode")
                 if mode == "bookmarklet":
-                    await websocket.send_json({"type": "status", "message": "Bookmarklet conectado! Escuchando subtítulos..."})
-                    # Reset state on new connection
+                    await websocket.send_json({"type": "status", "message": "Bookmarklet connected! Listening..."})
                     global_last_text = ""
                     global_sentence_buffer = []
                     
@@ -64,8 +86,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 if not current_text:
                     continue
                 
-                # If the caption box was cleared by Meet (new string is much smaller or completely different)
-                # and we have no overlap, treat it as a new block.
                 old_words = global_last_text.split()
                 new_words = current_text.split()
                 
@@ -74,11 +94,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                 for tag, i1, i2, j1, j2 in s.get_opcodes():
                     if tag in ('insert', 'replace'):
-                        # Only accept changes that touch the VERY END of the new string
                         if j2 == len(new_words):
                             new_chunk.extend(new_words[j1:j2])
                 
-                # If there's new text, buffer it
                 if new_chunk:
                     global_sentence_buffer.extend(new_chunk)
                     global_last_text = current_text
@@ -86,9 +104,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     buffer_str = " ".join(global_sentence_buffer)
                     last_char = buffer_str[-1] if buffer_str else ""
                     
-                    # Flush condition: ends with punctuation OR > 6 words
                     if last_char in ['.', '?', '!', ','] or len(global_sentence_buffer) >= 6:
-                        print(f"[Bot] Texto a traducir: {buffer_str}")
+                        print(f"[Bot] Text to translate: {buffer_str}")
                         for ws in active_websockets:
                             try:
                                 await ws.send_json({"type": "caption", "text": buffer_str})
@@ -98,18 +115,23 @@ async def websocket_endpoint(websocket: WebSocket):
                         global_sentence_buffer = []
                         
     except WebSocketDisconnect:
-        print("[Bot] Cliente desconectado")
+        print("[Bot] Client disconnected")
         active_websockets.discard(websocket)
     except Exception as e:
-        print(f"[Error WebSocket]: {e}")
+        print(f"[WebSocket Error]: {e}")
         active_websockets.discard(websocket)
 
 async def translation_worker():
     while True:
         try:
             text = await translation_queue.get()
-            translated = await translate_text(text)
-            print(f"[Traducido] {translated}")
+            
+            # Use the global language at the time of processing
+            target_name = global_target_lang_name
+            target_code = global_target_lang_code
+            
+            translated = await translate_text(text, target_name)
+            print(f"[Translated to {target_name}] {translated}")
             
             for ws in list(active_websockets):
                 try:
@@ -120,8 +142,16 @@ async def translation_worker():
             if not translated or not translated.strip():
                 translation_queue.task_done()
                 continue
+            
+            # Try setting the TTS language
+            try:
+                # 'zh' in gTTS is 'zh-CN' typically, but 'zh' works as fallback
+                lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
+                tts = gTTS(text=translated, lang=lang_for_tts)
+            except ValueError:
+                # Fallback to English if language is not supported by gTTS
+                tts = gTTS(text=translated, lang='en')
 
-            tts = gTTS(text=translated, lang='es', tld='com.mx')
             fp = io.BytesIO()
             tts.write_to_fp(fp)
             fp.seek(0)
@@ -135,7 +165,7 @@ async def translation_worker():
             
             translation_queue.task_done()
         except Exception as e:
-            print(f"[Error de Traducción]: {e}")
+            print(f"[Translation Error]: {e}")
 
 if __name__ == "__main__":
     import uvicorn

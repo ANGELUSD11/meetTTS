@@ -1,67 +1,109 @@
 ﻿<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TTS Meet Interpreter</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f8f9fa; color: #202124; }
+        .google-card { background: #fff; border: 1px solid #dadce0; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15); }
+        .google-btn { background-color: #1a73e8; color: white; border-radius: 24px; padding: 10px 24px; font-weight: 500; letter-spacing: .25px; transition: background-color .2s, box-shadow .2s; }
+        .google-btn:hover { background-color: #1b66c9; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15); }
+        .scrollable-box { height: 280px; overflow-y: auto; padding-right: 8px; }
+        .scrollable-box::-webkit-scrollbar { width: 8px; }
+        .scrollable-box::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 4px; }
+        .select-styled { border: 1px solid #dadce0; border-radius: 4px; padding: 8px 12px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+        .select-styled:focus { border-color: #1a73e8; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen font-sans">
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
-        <div class="text-center mb-12">
-            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">
-                Google Meet AI Interpreter
+<body class="min-h-screen">
+    
+    <!-- EXPERIMENTAL BANNER -->
+    <div class="bg-yellow-100 border-b border-yellow-200 text-yellow-800 px-4 py-3 text-center text-sm">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <strong>Experimental Project:</strong> This tool is currently using a free Groq API key which may rate-limit or expire. 
+        <a href="https://github.com/ANGELUSD11/meetTTS" target="_blank" class="underline font-medium ml-1 hover:text-yellow-900">
+            Host your own version on GitHub <i class="fab fa-github"></i>
+        </a>
+    </div>
+
+    <div class="container mx-auto px-4 py-10 max-w-5xl">
+        <!-- HEADER -->
+        <div class="flex flex-col items-center justify-center mb-10">
+            <h1 class="text-3xl font-normal text-gray-800 mb-2 flex items-center">
+                <span class="text-blue-600 font-medium mr-2">Google Meet</span> Interpreter
             </h1>
-            <p class="text-gray-400">Traducción en tiempo real de Inglés a Español usando Groq Llama3 y gTTS</p>
-            <p id="status" class="mt-4 text-sm text-gray-400 flex items-center justify-center gap-2">
-                <i class="fas fa-circle text-red-500"></i> Desconectado
+            <p class="text-gray-500 text-sm">Real-time open-source translation via Groq Llama3 & gTTS</p>
+            <p id="status" class="mt-4 text-sm font-medium text-gray-500 flex items-center justify-center gap-2">
+                <i class="fas fa-circle text-red-500 text-xs"></i> Disconnected
             </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
-                <h2 class="text-xl font-semibold mb-4 text-blue-400"><i class="fas fa-closed-captioning mr-2"></i> Subtítulos Originales</h2>
-                <div id="transcript" class="h-64 overflow-y-auto pr-2 space-y-3 font-mono text-sm text-gray-300">
-                    <div class="text-gray-500 italic">Esperando subtítulos...</div>
+        <!-- DASHBOARD GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- ORIGINAL TEXT -->
+            <div class="google-card p-6 flex flex-col">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                    <h2 class="text-lg font-medium text-gray-700"><i class="fas fa-closed-captioning text-gray-400 mr-2"></i> Original Captions</h2>
+                    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Auto-detect</span>
+                </div>
+                <div id="transcript" class="scrollable-box space-y-3 font-normal text-sm text-gray-600">
+                    <div class="text-gray-400 italic text-center mt-20">Waiting for captions...</div>
                 </div>
             </div>
 
-            <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
-                <h2 class="text-xl font-semibold mb-4 text-purple-400"><i class="fas fa-language mr-2"></i> Traducción al Español</h2>
-                <div id="translations" class="h-64 overflow-y-auto pr-2 space-y-3 font-mono text-sm">
-                    <div class="text-gray-500 italic">Esperando traducciones...</div>
+            <!-- TRANSLATED TEXT -->
+            <div class="google-card p-6 flex flex-col border-t-4 border-t-blue-500">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                    <h2 class="text-lg font-medium text-gray-700"><i class="fas fa-language text-blue-500 mr-2"></i> Translation</h2>
+                    <select id="targetLanguage" class="select-styled text-gray-700 bg-white">
+                        <option value="es" selected>Spanish</option>
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="pt">Portuguese</option>
+                        <option value="ja">Japanese</option>
+                        <option value="zh">Chinese</option>
+                    </select>
+                </div>
+                <div id="translations" class="scrollable-box space-y-3 font-medium text-sm text-gray-800">
+                    <div class="text-gray-400 italic font-normal text-center mt-20">Waiting for translations...</div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-blue-900/40 border border-blue-500 rounded-lg p-6 text-center">
-            <h3 class="text-lg font-semibold text-white mb-4">La Solución Definitiva para Google Meet</h3>
-            <p class="text-sm text-gray-300 mb-6">Arrastra el siguiente botón a tu barra de marcadores/favoritos. Luego entra a tu llamada de Google Meet, enciende los subtítulos ("CC") y haz clic en el marcador.</p>
-            
-            <a id="bookmarklet" href="#" 
-               class="inline-block bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105 cursor-grab">
-                🎙️ Traducir Google Meet
+        <!-- SETUP INSTRUCTIONS -->
+        <div class="bg-blue-50 border border-blue-100 rounded-lg p-8 text-center max-w-3xl mx-auto mt-12">
+            <h3 class="text-xl font-medium text-gray-800 mb-3">How to use</h3>
+            <p class="text-sm text-gray-600 mb-8 max-w-xl mx-auto leading-relaxed">
+                Drag the button below to your browser's bookmarks bar. Then, join your Google Meet, <strong>turn on Captions (CC)</strong>, and click the bookmark.
+            </p>
+            <a id="bookmarklet" href="#" class="google-btn shadow-md inline-flex items-center gap-2 cursor-grab">
+                <i class="fas fa-microphone-alt"></i> Translate Google Meet
             </a>
-            <p class="text-xs text-gray-400 mt-4">Nota: Presiona <b>F12</b> en Google Meet para abrir la consola y verificar que el texto se esté capturando correctamente.</p>
         </div>
     </div>
 
-    <!-- AQUÍ SE INYECTA EL CÓDIGO JS PURO, LIMPIO Y LEGIBLE DESDE PYTHON -->
+    <!-- RAW JAVASCRIPT INJECTED BY PYTHON -->
     <script id="raw-bookmarklet-code" type="text/plain">
 {{ raw_js | safe }}
     </script>
 
     <script>
-        // 1. Convertimos dinámicamente el script limpio en un enlace feo (URL Encoded) para que funcione en el navegador
+        // 1. Compile Bookmarklet
         const rawCode = document.getElementById('raw-bookmarklet-code').textContent;
         const encodedUrl = 'javascript:' + encodeURIComponent(rawCode);
         document.getElementById('bookmarklet').href = encodedUrl;
 
-        // 2. Lógica del WebSocket del Dashboard
+        // 2. WebSocket Logic
         const statusEl = document.getElementById('status');
         const transcriptEl = document.getElementById('transcript');
         const translationsEl = document.getElementById('translations');
+        const langSelect = document.getElementById('targetLanguage');
         let ws = null;
 
         function connectWebSocket() {
@@ -69,28 +111,29 @@
             ws = new WebSocket(protocol + window.location.host + '/ws');
 
             ws.onopen = () => {
-                statusEl.innerHTML = '<i class="fas fa-circle text-green-500"></i> Conectado al Servidor';
-                statusEl.classList.replace('text-gray-400', 'text-green-400');
+                statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> Connected to Server';
+                // Send current language selection
+                ws.send(JSON.stringify({action: 'set_language', lang: langSelect.value}));
             };
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 
                 if (data.type === 'status') {
-                    statusEl.innerHTML = '<i class="fas fa-circle text-green-500"></i> ' + data.message;
+                    statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> ' + data.message;
                 }
                 else if (data.type === 'caption') {
-                    if (transcriptEl.innerHTML.includes('Esperando')) transcriptEl.innerHTML = '';
+                    if (transcriptEl.innerHTML.includes('Waiting')) transcriptEl.innerHTML = '';
                     const div = document.createElement('div');
-                    div.className = 'bg-gray-700/50 p-3 rounded border border-gray-600';
+                    div.className = 'bg-gray-50 p-3 rounded-lg border border-gray-100';
                     div.textContent = data.text;
                     transcriptEl.appendChild(div);
                     transcriptEl.scrollTop = transcriptEl.scrollHeight;
                 }
                 else if (data.type === 'translation') {
-                    if (translationsEl.innerHTML.includes('Esperando')) translationsEl.innerHTML = '';
+                    if (translationsEl.innerHTML.includes('Waiting')) translationsEl.innerHTML = '';
                     const div = document.createElement('div');
-                    div.className = 'bg-purple-900/30 p-3 rounded border border-purple-500/50 text-purple-200';
+                    div.className = 'bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-900';
                     div.textContent = data.text;
                     translationsEl.appendChild(div);
                     translationsEl.scrollTop = translationsEl.scrollHeight;
@@ -98,11 +141,17 @@
             };
 
             ws.onclose = () => {
-                statusEl.innerHTML = '<i class="fas fa-circle text-red-500"></i> Desconectado. Reconectando...';
-                statusEl.classList.replace('text-green-400', 'text-red-400');
+                statusEl.innerHTML = '<i class="fas fa-circle text-red-500 text-xs"></i> Disconnected. Reconnecting...';
                 setTimeout(connectWebSocket, 3000);
             };
         }
+
+        // Listen for language changes
+        langSelect.addEventListener('change', (e) => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: 'set_language', lang: e.target.value}));
+            }
+        });
 
         connectWebSocket();
     </script>
