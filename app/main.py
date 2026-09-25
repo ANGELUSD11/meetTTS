@@ -9,14 +9,31 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.staticfiles import StaticFiles
 from gtts import gTTS
+from contextlib import asynccontextmanager
 
 from app.translator import translate_text
 
-app = FastAPI(title="AI Google Meet Interpreter")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(translation_worker())
+    yield
+
+app = FastAPI(title="AI Google Meet Interpreter", lifespan=lifespan)
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
+
+active_websockets = set()
+translation_queue = asyncio.Queue()
+
+# Global state for diffing and language
+global_last_text = ""
+global_sentence_buffer = []
+
+# Default Language
+global_target_lang_name = "Spanish"
+global_target_lang_code = "es"
 
 LANGUAGE_MAP = {
     "es": "Spanish",
@@ -36,50 +53,13 @@ async def get_index(request: Request):
         raw_js = f.read()
     return templates.TemplateResponse(request=request, name="index.html", context={"raw_js": raw_js})
 
-
-async def process_translation(websocket: WebSocket, text: str, target_name: str, target_code: str):
-    try:
-        translated = await translate_text(text, target_name)
-        print(f"[Translated to {target_name}] {translated}")
-        
-        try:
-            await websocket.send_json({"type": "translation", "text": translated})
-        except:
-            return
-            
-        if not translated or not translated.strip():
-            return
-            
-        # TTS
-        try:
-            lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
-            tts = gTTS(text=translated, lang=lang_for_tts)
-        except ValueError:
-            tts = gTTS(text=translated, lang='en')
-
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
-        
-        try:
-            await websocket.send_json({"type": "audio", "audio": audio_base64})
-        except:
-            pass
-            
-    except Exception as e:
-        print(f"[Translation Error]: {e}")
-
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    global global_last_text, global_sentence_buffer
+    global global_target_lang_name, global_target_lang_code
     
-    # State scoped specifically to this user's connection
-    session_last_text = ""
-    session_sentence_buffer = []
-    session_target_lang_name = "Spanish"
-    session_target_lang_code = "es"
+    await websocket.accept()
+    active_websockets.add(websocket)
     
     await websocket.send_json({"type": "status", "message": "Connected to server."})
     
@@ -90,23 +70,23 @@ async def websocket_endpoint(websocket: WebSocket):
             if data.get("action") == "set_language":
                 lang_code = data.get("lang")
                 if lang_code in LANGUAGE_MAP:
-                    session_target_lang_code = lang_code
-                    session_target_lang_name = LANGUAGE_MAP[lang_code]
-                    print(f"[Bot] Client language changed to {session_target_lang_name}")
+                    global_target_lang_code = lang_code
+                    global_target_lang_name = LANGUAGE_MAP[lang_code]
+                    print(f"[Bot] Language changed to {global_target_lang_name}")
             
             elif data.get("action") == "join":
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet connected! Listening..."})
-                    session_last_text = ""
-                    session_sentence_buffer = []
+                    global_last_text = ""
+                    global_sentence_buffer = []
                     
             elif data.get("action") == "caption":
                 current_text = data.get("text", "").strip()
                 if not current_text:
                     continue
                 
-                old_words = session_last_text.split()
+                old_words = global_last_text.split()
                 new_words = current_text.split()
                 
                 s = difflib.SequenceMatcher(None, old_words, new_words)
@@ -118,36 +98,74 @@ async def websocket_endpoint(websocket: WebSocket):
                             new_chunk.extend(new_words[j1:j2])
                 
                 if new_chunk:
-                    session_sentence_buffer.extend(new_chunk)
-                    session_last_text = current_text
+                    global_sentence_buffer.extend(new_chunk)
+                    global_last_text = current_text
                     
-                    buffer_str = " ".join(session_sentence_buffer)
+                    buffer_str = " ".join(global_sentence_buffer)
                     last_char = buffer_str[-1] if buffer_str else ""
                     
-                    if last_char in ['.', '?', '!', ','] or len(session_sentence_buffer) >= 5:
+                    if last_char in ['.', '?', '!', ','] or len(global_sentence_buffer) >= 5:
                         print(f"[Bot] Text to translate: {buffer_str}")
-                        
-                        try:
-                            await websocket.send_json({"type": "caption", "text": buffer_str})
-                        except:
-                            pass
-                            
-                        # Fire and forget translation task for this specific user
-                        asyncio.create_task(
-                            process_translation(
-                                websocket, 
-                                buffer_str, 
-                                session_target_lang_name, 
-                                session_target_lang_code
-                            )
-                        )
-                        
-                        session_sentence_buffer = []
+                        for ws in active_websockets:
+                            try:
+                                await ws.send_json({"type": "caption", "text": buffer_str})
+                            except:
+                                pass
+                        await translation_queue.put(buffer_str)
+                        global_sentence_buffer = []
                         
     except WebSocketDisconnect:
         print("[Bot] Client disconnected")
+        active_websockets.discard(websocket)
     except Exception as e:
         print(f"[WebSocket Error]: {e}")
+        active_websockets.discard(websocket)
+
+async def translation_worker():
+    while True:
+        try:
+            text = await translation_queue.get()
+            
+            # Use the global language at the time of processing
+            target_name = global_target_lang_name
+            target_code = global_target_lang_code
+            
+            translated = await translate_text(text, target_name)
+            print(f"[Translated to {target_name}] {translated}")
+            
+            for ws in list(active_websockets):
+                try:
+                    await ws.send_json({"type": "translation", "text": translated})
+                except:
+                    pass
+            
+            if not translated or not translated.strip():
+                translation_queue.task_done()
+                continue
+            
+            # Try setting the TTS language
+            try:
+                # 'zh' in gTTS is 'zh-CN' typically, but 'zh' works as fallback
+                lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
+                tts = gTTS(text=translated, lang=lang_for_tts)
+            except ValueError:
+                # Fallback to English if language is not supported by gTTS
+                tts = gTTS(text=translated, lang='en')
+
+            fp = io.BytesIO()
+            tts.write_to_fp(fp)
+            fp.seek(0)
+            audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
+            
+            for ws in list(active_websockets):
+                try:
+                    await ws.send_json({"type": "audio", "audio": audio_base64})
+                except:
+                    pass
+            
+            translation_queue.task_done()
+        except Exception as e:
+            print(f"[Translation Error]: {e}")
 
 if __name__ == "__main__":
     import uvicorn
