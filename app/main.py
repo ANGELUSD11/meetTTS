@@ -9,31 +9,14 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from fastapi.staticfiles import StaticFiles
 from gtts import gTTS
-from contextlib import asynccontextmanager
 
 from app.translator import translate_text
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    asyncio.create_task(translation_worker())
-    yield
-
-app = FastAPI(title="AI Google Meet Interpreter", lifespan=lifespan)
+app = FastAPI(title="AI Google Meet Interpreter")
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
-
-active_websockets = set()
-translation_queue = asyncio.Queue()
-
-# Global state for diffing and language
-global_last_text = ""
-global_sentence_buffer = []
-
-# Default Language
-global_target_lang_name = "Spanish"
-global_target_lang_code = "es"
 
 LANGUAGE_MAP = {
     "es": "Spanish",
@@ -46,6 +29,16 @@ LANGUAGE_MAP = {
     "zh": "Chinese"
 }
 
+class RoomState:
+    def __init__(self):
+        self.websockets = set()
+        self.last_text = ""
+        self.sentence_buffer = []
+        self.target_lang_name = "Spanish"
+        self.target_lang_code = "es"
+
+rooms = {}
+
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
     bookmarklet_path = os.path.join(base_dir, "static", "bookmarklet.js")
@@ -53,15 +46,57 @@ async def get_index(request: Request):
         raw_js = f.read()
     return templates.TemplateResponse(request=request, name="index.html", context={"raw_js": raw_js})
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    global global_last_text, global_sentence_buffer
-    global global_target_lang_name, global_target_lang_code
-    
+async def process_translation(room_id: str, text: str, target_name: str, target_code: str):
+    try:
+        translated = await translate_text(text, target_name)
+        print(f"[Room {room_id} -> {target_name}] {translated}")
+        
+        room = rooms.get(room_id)
+        if not room: return
+            
+        for ws in list(room.websockets):
+            try:
+                await ws.send_json({"type": "translation", "text": translated})
+            except:
+                pass
+                
+        if not translated or not translated.strip():
+            return
+            
+        # TTS
+        try:
+            lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
+            tts = gTTS(text=translated, lang=lang_for_tts)
+        except ValueError:
+            tts = gTTS(text=translated, lang='en')
+
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
+        
+        room = rooms.get(room_id)
+        if room:
+            for ws in list(room.websockets):
+                try:
+                    await ws.send_json({"type": "audio", "audio": audio_base64})
+                except:
+                    pass
+            
+    except Exception as e:
+        print(f"[Translation Error]: {e}")
+
+
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
     await websocket.accept()
-    active_websockets.add(websocket)
     
-    await websocket.send_json({"type": "status", "message": "Connected to server."})
+    if room_id not in rooms:
+        rooms[room_id] = RoomState()
+    room = rooms[room_id]
+    room.websockets.add(websocket)
+    
+    await websocket.send_json({"type": "status", "message": f"Connected to server (Room: {room_id})."})
     
     try:
         while True:
@@ -70,23 +105,23 @@ async def websocket_endpoint(websocket: WebSocket):
             if data.get("action") == "set_language":
                 lang_code = data.get("lang")
                 if lang_code in LANGUAGE_MAP:
-                    global_target_lang_code = lang_code
-                    global_target_lang_name = LANGUAGE_MAP[lang_code]
-                    print(f"[Bot] Language changed to {global_target_lang_name}")
+                    room.target_lang_code = lang_code
+                    room.target_lang_name = LANGUAGE_MAP[lang_code]
+                    print(f"[Room {room_id}] Language changed to {room.target_lang_name}")
             
             elif data.get("action") == "join":
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet connected! Listening..."})
-                    global_last_text = ""
-                    global_sentence_buffer = []
+                    room.last_text = ""
+                    room.sentence_buffer = []
                     
             elif data.get("action") == "caption":
                 current_text = data.get("text", "").strip()
                 if not current_text:
                     continue
                 
-                old_words = global_last_text.split()
+                old_words = room.last_text.split()
                 new_words = current_text.split()
                 
                 s = difflib.SequenceMatcher(None, old_words, new_words)
@@ -98,74 +133,43 @@ async def websocket_endpoint(websocket: WebSocket):
                             new_chunk.extend(new_words[j1:j2])
                 
                 if new_chunk:
-                    global_sentence_buffer.extend(new_chunk)
-                    global_last_text = current_text
+                    room.sentence_buffer.extend(new_chunk)
+                    room.last_text = current_text
                     
-                    buffer_str = " ".join(global_sentence_buffer)
+                    buffer_str = " ".join(room.sentence_buffer)
                     last_char = buffer_str[-1] if buffer_str else ""
                     
-                    if last_char in ['.', '?', '!', ','] or len(global_sentence_buffer) >= 5:
-                        print(f"[Bot] Text to translate: {buffer_str}")
-                        for ws in active_websockets:
+                    if last_char in ['.', '?', '!', ','] or len(room.sentence_buffer) >= 5:
+                        print(f"[Room {room_id}] Text to translate: {buffer_str}")
+                        
+                        for ws in list(room.websockets):
                             try:
                                 await ws.send_json({"type": "caption", "text": buffer_str})
                             except:
                                 pass
-                        await translation_queue.put(buffer_str)
-                        global_sentence_buffer = []
+                            
+                        asyncio.create_task(
+                            process_translation(
+                                room_id, 
+                                buffer_str, 
+                                room.target_lang_name, 
+                                room.target_lang_code
+                            )
+                        )
+                        
+                        room.sentence_buffer = []
                         
     except WebSocketDisconnect:
-        print("[Bot] Client disconnected")
-        active_websockets.discard(websocket)
+        print(f"[Room {room_id}] Client disconnected")
+        if websocket in room.websockets:
+            room.websockets.remove(websocket)
+        if not room.websockets:
+            del rooms[room_id]
+            print(f"[Room {room_id}] Destroyed (empty).")
     except Exception as e:
         print(f"[WebSocket Error]: {e}")
-        active_websockets.discard(websocket)
-
-async def translation_worker():
-    while True:
-        try:
-            text = await translation_queue.get()
-            
-            # Use the global language at the time of processing
-            target_name = global_target_lang_name
-            target_code = global_target_lang_code
-            
-            translated = await translate_text(text, target_name)
-            print(f"[Translated to {target_name}] {translated}")
-            
-            for ws in list(active_websockets):
-                try:
-                    await ws.send_json({"type": "translation", "text": translated})
-                except:
-                    pass
-            
-            if not translated or not translated.strip():
-                translation_queue.task_done()
-                continue
-            
-            # Try setting the TTS language
-            try:
-                # 'zh' in gTTS is 'zh-CN' typically, but 'zh' works as fallback
-                lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
-                tts = gTTS(text=translated, lang=lang_for_tts)
-            except ValueError:
-                # Fallback to English if language is not supported by gTTS
-                tts = gTTS(text=translated, lang='en')
-
-            fp = io.BytesIO()
-            tts.write_to_fp(fp)
-            fp.seek(0)
-            audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
-            
-            for ws in list(active_websockets):
-                try:
-                    await ws.send_json({"type": "audio", "audio": audio_base64})
-                except:
-                    pass
-            
-            translation_queue.task_done()
-        except Exception as e:
-            print(f"[Translation Error]: {e}")
+        if websocket in room.websockets:
+            room.websockets.remove(websocket)
 
 if __name__ == "__main__":
     import uvicorn
