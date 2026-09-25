@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V6 (Ultra-Fast Celeron Edition)!');
+    console.log('[AI Meet] Super Bookmarklet V7 (Smart innerText Fix)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -67,18 +67,19 @@
 
     let lastSentText = '';
 
-    // Optimizacion extrema para PCs lentos (Celeron/2GB RAM)
-    // Se ejecuta más rapido (800ms) para menor retraso, pero usa textContent en vez de innerText
-    // para evitar el recálculo de CSS (Layout Thrashing) que congela los navegadores.
     setInterval(() => {
         let text = '';
-        let elements = document.querySelectorAll('.a4cQT, .CNusmb, .iTTPOb');
-        let len = elements.length;
-        
-        for(let i = 0; i < len; i++) {
-            let content = elements[i].textContent;
-            if(content) { text += content + ' '; }
+        // Para no congelar PCs lentos con miles de llamadas innerText, 
+        // y para IGNORAR los menús ocultos de idiomas, buscamos SOLAMENTE
+        // los bloques principales de texto.
+        let elements = document.querySelectorAll('.a4cQT');
+        if (elements.length === 0) {
+            elements = document.querySelectorAll('.iTTPOb'); // fallback
         }
+        
+        elements.forEach(el => {
+            if(el.innerText) { text += el.innerText + ' '; }
+        });
         
         const garbageRegex = /language|Español|Inglés|México|format_size|Tamaño de fuente|circle|Color de la fuente|settings|Abrir configuración de subtítulos|Tú|Ir al final|Más opciones|arrow_downward/gi;
         text = text.replace(garbageRegex, ' ');
@@ -88,5 +89,5 @@
             iframe.contentWindow.postMessage({action: 'caption', text: text}, '*');
             lastSentText = text;
         }
-    }, 800);
+    }, 1000);
 })();
