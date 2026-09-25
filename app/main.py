@@ -124,7 +124,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     buffer_str = " ".join(session_sentence_buffer)
                     last_char = buffer_str[-1] if buffer_str else ""
                     
-                    if last_char in ['.', '?', '!', ','] or len(session_sentence_buffer) >= 6:
+                    if last_char in ['.', '?', '!', ','] or len(session_sentence_buffer) >= 5:
                         print(f"[Bot] Text to translate: {buffer_str}")
                         
                         try:
