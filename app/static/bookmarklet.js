@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V9 (Cross-Origin Sync Fix)!');
+    console.log('[AI Meet] Super Bookmarklet V10 (Parentheses Fix)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -80,7 +80,7 @@
             if(el.innerText) { text += el.innerText + ' '; }
         });
         
-        const garbageRegex = /language|Español|Inglés|México|format_size|Tamaño de fuente|circle|Color de la fuente|settings|Abrir configuración de subtítulos|Tú|Ir al final|Más opciones|arrow_downward/gi;
+        const garbageRegex = /language|Español|Inglés|México|format_size|Tamaño de fuente|circle|Color de la fuente|settings|Abrir configuración de subtítulos|Tú|Ir al final|Más opciones|arrow_downward|\(\s*\)/gi;
         text = text.replace(garbageRegex, ' ');
         text = text.replace(/\s+/g, ' ').trim();
 
