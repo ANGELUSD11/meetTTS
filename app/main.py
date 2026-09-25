@@ -44,6 +44,20 @@ async def get_index(request: Request):
         raw_js = f.read()
     return templates.TemplateResponse(request=request, name="index.html", context={"raw_js": raw_js})
 
+
+def generate_tts_audio(text: str, target_code: str) -> str:
+    try:
+        lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
+        tts = gTTS(text=text, lang=lang_for_tts)
+    except ValueError:
+        tts = gTTS(text=text, lang='en')
+
+    fp = io.BytesIO()
+    tts.write_to_fp(fp)
+    fp.seek(0)
+    return base64.b64encode(fp.read()).decode('utf-8')
+
+
 async def process_translation(room_id: str, text: str, target_name: str, target_code: str):
     try:
         translated = await translate_text(text, target_name)
@@ -61,17 +75,8 @@ async def process_translation(room_id: str, text: str, target_name: str, target_
         if not translated or not translated.strip():
             return
             
-        # TTS
-        try:
-            lang_for_tts = 'zh-CN' if target_code == 'zh' else target_code
-            tts = gTTS(text=translated, lang=lang_for_tts)
-        except ValueError:
-            tts = gTTS(text=translated, lang='en')
-
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        audio_base64 = base64.b64encode(fp.read()).decode('utf-8')
+        # Ejecutar TTS de gTTS en un hilo separado para NO bloquear el servidor
+        audio_base64 = await asyncio.to_thread(generate_tts_audio, translated, target_code)
         
         room = rooms.get(room_id)
         if room:
@@ -112,13 +117,36 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet connected! Listening..."})
                     room.translated_length = 0
+            
+            elif data.get("action") == "flush":
+                # Forzado por el marcador cuando el usuario hace una pausa larga
+                current_text = data.get("text", "").replace("( )", "").replace("()", "").strip()
+                if room.translated_length > len(current_text):
+                    room.translated_length = 0
+                
+                pending_text = current_text[room.translated_length:].strip()
+                if pending_text:
+                    chunk_to_translate = pending_text
+                    
+                    chunk_index = current_text.find(chunk_to_translate, room.translated_length)
+                    if chunk_index != -1:
+                        room.translated_length = chunk_index + len(chunk_to_translate)
+                    else:
+                        room.translated_length = len(current_text)
+                        
+                    print(f"[Room {room_id} FLUSH] Text to translate: {chunk_to_translate}")
+                    for ws in list(room.websockets):
+                        try:
+                            await ws.send_json({"type": "caption", "text": chunk_to_translate})
+                        except: pass
+                        
+                    asyncio.create_task(process_translation(room_id, chunk_to_translate, room.target_lang_name, room.target_lang_code))
                     
             elif data.get("action") == "caption":
                 current_text = data.get("text", "").replace("( )", "").replace("()", "").strip()
                 if not current_text:
                     continue
                 
-                # Si el contenedor de Google Meet se limpió (nuevo bloque de subtítulos), reseteamos
                 if room.translated_length > len(current_text):
                     room.translated_length = 0
                     
@@ -129,8 +157,8 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 words = pending_text.split()
                 last_char = pending_text[-1]
                 
-                # Esperamos puntuación o mínimo 8 palabras para enviar una frase con buen contexto
-                if last_char in ['.', '?', '!', ','] or len(words) >= 8:
+                # Se baja la paciencia a 6 palabras para más velocidad, y se ignora la coma para no cortar frases a medias
+                if last_char in ['.', '?', '!'] or len(words) >= 6:
                     chunk_to_translate = pending_text
                     
                     chunk_index = current_text.find(chunk_to_translate, room.translated_length)

@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V12 (Smart Menu Ignore)!');
+    console.log('[AI Meet] Super Bookmarklet V13 (Turbo Flush)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -68,12 +68,12 @@
     }
 
     let lastSentText = '';
+    let noChangeTicks = 0;
 
     setInterval(() => {
         let text = '';
         let elements = document.querySelectorAll('.a4cQT');
         if (elements.length === 0) {
-            // Fallback just in case
             elements = document.querySelectorAll('.a4cQT, .CNusmb, .iTTPOb'); 
         }
         
@@ -81,7 +81,6 @@
             if(el.innerText) { text += el.innerText + ' '; }
         });
         
-        // Si detectamos que el usuario abrió el menú de idiomas o configuración, ignoramos la lectura
         if (text.includes('BETA') && (text.includes('Emiratos') || text.includes('Albanés') || text.includes('Filipinas'))) {
             return;
         }
@@ -96,6 +95,12 @@
         if (text && text !== lastSentText) {
             iframe.contentWindow.postMessage({action: 'caption', text: text}, '*');
             lastSentText = text;
+            noChangeTicks = 0;
+        } else if (text && text === lastSentText) {
+            noChangeTicks++;
+            if (noChangeTicks === 2) {
+                iframe.contentWindow.postMessage({action: 'flush', text: text}, '*');
+            }
         }
     }, 1000);
 })();
