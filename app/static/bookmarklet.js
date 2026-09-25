@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V13 (Turbo Flush)!');
+    console.log('[AI Meet] Super Bookmarklet V14 (1-Second Flush)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -98,7 +98,7 @@
             noChangeTicks = 0;
         } else if (text && text === lastSentText) {
             noChangeTicks++;
-            if (noChangeTicks === 2) {
+            if (noChangeTicks === 1) {
                 iframe.contentWindow.postMessage({action: 'flush', text: text}, '*');
             }
         }

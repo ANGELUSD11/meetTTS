@@ -148,11 +148,10 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                     
                 pending_words = current_words[room.translated_words_count:]
                 
-                # Para evitar traducir palabras a medias que Google Meet está corrigiendo en tiempo real (ej: "tradu...ce"),
-                # apartamos las últimas 2 palabras como "zona de volatilidad" y solo traducimos si las palabras seguras llegan a 6.
-                if len(pending_words) > 2:
-                    safe_pending = pending_words[:-2]
-                    if len(safe_pending) >= 6:
+                if len(pending_words) > 1:
+                    safe_pending = pending_words[:-1]
+                    # Esperar 8 palabras para enviar una frase robusta, a menos que haya un flush
+                    if len(safe_pending) >= 8:
                         chunk_to_translate = " ".join(safe_pending)
                         room.translated_words_count += len(safe_pending)
                         
