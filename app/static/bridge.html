@@ -5,7 +5,8 @@
 </head>
 <body>
     <script>
-        let roomId = localStorage.getItem('tts_room_id') || 'default_room';
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomId = urlParams.get('roomId') || 'default_room';
         const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/' + roomId;
         let ws = new WebSocket(wsUrl);
 

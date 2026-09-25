@@ -112,7 +112,6 @@
         // 0. Dark Mode Logic
         const themeToggleBtn = document.getElementById('themeToggle');
         
-        // Check for saved theme preference, otherwise use system preference
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -129,56 +128,59 @@
             }
         });
 
-        // 1. Compile Bookmarklet
+        // 1. Session ID Logic
+        let roomId = localStorage.getItem('tts_room_id');
+        if (!roomId) {
+            roomId = 'room_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('tts_room_id', roomId);
+        }
+
+        // 2. Compile Bookmarklet
         const rawCode = document.getElementById('raw-bookmarklet-code').textContent;
-        const encodedUrl = 'javascript:' + encodeURIComponent(rawCode);
+        const encodedUrl = 'javascript:window.TTS_ROOM_ID="' + roomId + '";' + encodeURIComponent(rawCode);
         document.getElementById('bookmarklet').href = encodedUrl;
 
-        // 2. WebSocket Logic
+        // 3. WebSocket Logic
         const statusEl = document.getElementById('status');
         const transcriptEl = document.getElementById('transcript');
         const translationsEl = document.getElementById('translations');
         const langSelect = document.getElementById('targetLanguage');
-        let ws = null;
+        
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        let ws = new WebSocket(protocol + window.location.host + '/ws/' + roomId);
 
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-            let roomId = localStorage.getItem('tts_room_id'); if (!roomId) { roomId = 'room_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('tts_room_id', roomId); } ws = new WebSocket(protocol + window.location.host + '/ws/' + roomId);
+        ws.onopen = () => {
+            statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> Connected to Server';
+            ws.send(JSON.stringify({action: 'set_language', lang: langSelect.value}));
+        };
 
-            ws.onopen = () => {
-                statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> Connected to Server';
-                ws.send(JSON.stringify({action: 'set_language', lang: langSelect.value}));
-            };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'status') {
+                statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> ' + data.message;
+            }
+            else if (data.type === 'caption') {
+                if (transcriptEl.innerHTML.includes('Waiting')) transcriptEl.innerHTML = '';
+                const div = document.createElement('div');
+                div.className = 'bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600';
+                div.textContent = data.text;
+                transcriptEl.appendChild(div);
+                transcriptEl.scrollTop = transcriptEl.scrollHeight;
+            }
+            else if (data.type === 'translation') {
+                if (translationsEl.innerHTML.includes('Waiting')) translationsEl.innerHTML = '';
+                const div = document.createElement('div');
+                div.className = 'bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50 text-blue-900 dark:text-blue-100';
+                div.textContent = data.text;
+                translationsEl.appendChild(div);
+                translationsEl.scrollTop = translationsEl.scrollHeight;
+            }
+        };
 
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                
-                if (data.type === 'status') {
-                    statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> ' + data.message;
-                }
-                else if (data.type === 'caption') {
-                    if (transcriptEl.innerHTML.includes('Waiting')) transcriptEl.innerHTML = '';
-                    const div = document.createElement('div');
-                    div.className = 'bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600';
-                    div.textContent = data.text;
-                    transcriptEl.appendChild(div);
-                    transcriptEl.scrollTop = transcriptEl.scrollHeight;
-                }
-                else if (data.type === 'translation') {
-                    if (translationsEl.innerHTML.includes('Waiting')) translationsEl.innerHTML = '';
-                    const div = document.createElement('div');
-                    div.className = 'bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50 text-blue-900 dark:text-blue-100';
-                    div.textContent = data.text;
-                    translationsEl.appendChild(div);
-                    translationsEl.scrollTop = translationsEl.scrollHeight;
-                }
-            };
-
-            ws.onclose = () => {
-                statusEl.innerHTML = '<i class="fas fa-circle text-red-500 text-xs"></i> Disconnected. Reconnecting...';
-                setTimeout(connectWebSocket, 3000);
-            };
-        }
+        ws.onclose = () => {
+            statusEl.innerHTML = '<i class="fas fa-circle text-red-500 text-xs"></i> Disconnected. Reconnecting...';
+        };
 
         // Listen for language changes
         langSelect.addEventListener('change', (e) => {
@@ -186,8 +188,6 @@
                 ws.send(JSON.stringify({action: 'set_language', lang: e.target.value}));
             }
         });
-
-        connectWebSocket();
     </script>
 </body>
 </html>

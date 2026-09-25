@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V8 (Cache Buster)!');
+    console.log('[AI Meet] Super Bookmarklet V9 (Cross-Origin Sync Fix)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -12,7 +12,9 @@
     const iframe = document.createElement('iframe');
     iframe.id = 'ai-meet-bridge';
     const protocol = wsDomain.includes('localhost') ? 'http://' : 'https://';
-    iframe.src = protocol + wsDomain + '/static/bridge.html?v=' + Date.now();
+    
+    let roomId = window.TTS_ROOM_ID || 'default_room';
+    iframe.src = protocol + wsDomain + '/static/bridge.html?roomId=' + roomId + '&v=' + Date.now();
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
 
