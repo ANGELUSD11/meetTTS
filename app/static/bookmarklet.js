@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V7 (Smart innerText Fix)!');
+    console.log('[AI Meet] Super Bookmarklet V8 (Cache Buster)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -12,7 +12,7 @@
     const iframe = document.createElement('iframe');
     iframe.id = 'ai-meet-bridge';
     const protocol = wsDomain.includes('localhost') ? 'http://' : 'https://';
-    iframe.src = protocol + wsDomain + '/static/bridge.html';
+    iframe.src = protocol + wsDomain + '/static/bridge.html?v=' + Date.now();
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
 
@@ -69,12 +69,9 @@
 
     setInterval(() => {
         let text = '';
-        // Para no congelar PCs lentos con miles de llamadas innerText, 
-        // y para IGNORAR los menús ocultos de idiomas, buscamos SOLAMENTE
-        // los bloques principales de texto.
         let elements = document.querySelectorAll('.a4cQT');
         if (elements.length === 0) {
-            elements = document.querySelectorAll('.iTTPOb'); // fallback
+            elements = document.querySelectorAll('.iTTPOb'); 
         }
         
         elements.forEach(el => {
