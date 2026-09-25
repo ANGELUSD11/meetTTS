@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V14 (1-Second Flush)!');
+    console.log('[AI Meet] Super Bookmarklet V15 (Speed Classic)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -68,7 +68,6 @@
     }
 
     let lastSentText = '';
-    let noChangeTicks = 0;
 
     setInterval(() => {
         let text = '';
@@ -95,12 +94,6 @@
         if (text && text !== lastSentText) {
             iframe.contentWindow.postMessage({action: 'caption', text: text}, '*');
             lastSentText = text;
-            noChangeTicks = 0;
-        } else if (text && text === lastSentText) {
-            noChangeTicks++;
-            if (noChangeTicks === 1) {
-                iframe.contentWindow.postMessage({action: 'flush', text: text}, '*');
-            }
         }
     }, 1000);
 })();

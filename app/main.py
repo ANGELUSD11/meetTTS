@@ -2,6 +2,7 @@
 import os
 import base64
 import io
+import difflib
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -31,7 +32,8 @@ LANGUAGE_MAP = {
 class RoomState:
     def __init__(self):
         self.websockets = set()
-        self.translated_words_count = 0
+        self.last_text = ""
+        self.sentence_buffer = []
         self.target_lang_name = "Spanish"
         self.target_lang_code = "es"
 
@@ -115,62 +117,57 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet connected! Listening..."})
-                    room.translated_words_count = 0
-            
-            elif data.get("action") == "flush":
-                current_text = data.get("text", "").replace("( )", "").replace("()", "").strip()
-                current_words = current_text.split()
-                
-                if room.translated_words_count > len(current_words):
-                    room.translated_words_count = 0
-                
-                pending_words = current_words[room.translated_words_count:]
-                if pending_words:
-                    chunk_to_translate = " ".join(pending_words)
-                    room.translated_words_count = len(current_words)
-                        
-                    print(f"[Room {room_id} FLUSH] Text to translate: {chunk_to_translate}")
-                    for ws in list(room.websockets):
-                        try:
-                            await ws.send_json({"type": "caption", "text": chunk_to_translate})
-                        except: pass
-                        
-                    asyncio.create_task(process_translation(room_id, chunk_to_translate, room.target_lang_name, room.target_lang_code))
+                    room.last_text = ""
+                    room.sentence_buffer = []
                     
             elif data.get("action") == "caption":
                 current_text = data.get("text", "").replace("( )", "").replace("()", "").strip()
                 if not current_text:
                     continue
                 
-                current_words = current_text.split()
-                if room.translated_words_count > len(current_words):
-                    room.translated_words_count = 0
-                    
-                pending_words = current_words[room.translated_words_count:]
+                old_words = room.last_text.split()
+                new_words = current_text.split()
                 
-                if len(pending_words) > 1:
-                    safe_pending = pending_words[:-1]
-                    # Esperar 8 palabras para enviar una frase robusta, a menos que haya un flush
-                    if len(safe_pending) >= 8:
-                        chunk_to_translate = " ".join(safe_pending)
-                        room.translated_words_count += len(safe_pending)
-                        
-                        print(f"[Room {room_id}] Text to translate: {chunk_to_translate}")
+                # Si las palabras nuevas son menos, se borró el contenedor de Google Meet, reseteamos el buffer
+                if len(new_words) < len(old_words):
+                    room.last_text = ""
+                    old_words = []
+                
+                s = difflib.SequenceMatcher(None, old_words, new_words)
+                new_chunk = []
+                
+                for tag, i1, i2, j1, j2 in s.get_opcodes():
+                    if tag in ('insert', 'replace'):
+                        if j2 == len(new_words):
+                            new_chunk.extend(new_words[j1:j2])
+                
+                if new_chunk:
+                    room.sentence_buffer.extend(new_chunk)
+                    room.last_text = current_text
+                    
+                    buffer_str = " ".join(room.sentence_buffer)
+                    last_char = buffer_str[-1] if buffer_str else ""
+                    
+                    # Restauramos la velocidad EXACTA que le gustaba al usuario: puntuación o 6 palabras
+                    if last_char in ['.', '?', '!', ','] or len(room.sentence_buffer) >= 6:
+                        print(f"[Room {room_id}] Text to translate: {buffer_str}")
                         
                         for ws in list(room.websockets):
                             try:
-                                await ws.send_json({"type": "caption", "text": chunk_to_translate})
+                                await ws.send_json({"type": "caption", "text": buffer_str})
                             except:
                                 pass
                             
                         asyncio.create_task(
                             process_translation(
                                 room_id, 
-                                chunk_to_translate, 
+                                buffer_str, 
                                 room.target_lang_name, 
                                 room.target_lang_code
                             )
                         )
+                        
+                        room.sentence_buffer = []
                         
     except WebSocketDisconnect:
         print(f"[Room {room_id}] Client disconnected")
