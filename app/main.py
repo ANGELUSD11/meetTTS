@@ -31,7 +31,7 @@ LANGUAGE_MAP = {
 class RoomState:
     def __init__(self):
         self.websockets = set()
-        self.translated_length = 0
+        self.translated_words_count = 0
         self.target_lang_name = "Spanish"
         self.target_lang_code = "es"
 
@@ -75,7 +75,6 @@ async def process_translation(room_id: str, text: str, target_name: str, target_
         if not translated or not translated.strip():
             return
             
-        # Ejecutar TTS de gTTS en un hilo separado para NO bloquear el servidor
         audio_base64 = await asyncio.to_thread(generate_tts_audio, translated, target_code)
         
         room = rooms.get(room_id)
@@ -116,23 +115,19 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 mode = data.get("mode")
                 if mode == "bookmarklet":
                     await websocket.send_json({"type": "status", "message": "Bookmarklet connected! Listening..."})
-                    room.translated_length = 0
+                    room.translated_words_count = 0
             
             elif data.get("action") == "flush":
-                # Forzado por el marcador cuando el usuario hace una pausa larga
                 current_text = data.get("text", "").replace("( )", "").replace("()", "").strip()
-                if room.translated_length > len(current_text):
-                    room.translated_length = 0
+                current_words = current_text.split()
                 
-                pending_text = current_text[room.translated_length:].strip()
-                if pending_text:
-                    chunk_to_translate = pending_text
-                    
-                    chunk_index = current_text.find(chunk_to_translate, room.translated_length)
-                    if chunk_index != -1:
-                        room.translated_length = chunk_index + len(chunk_to_translate)
-                    else:
-                        room.translated_length = len(current_text)
+                if room.translated_words_count > len(current_words):
+                    room.translated_words_count = 0
+                
+                pending_words = current_words[room.translated_words_count:]
+                if pending_words:
+                    chunk_to_translate = " ".join(pending_words)
+                    room.translated_words_count = len(current_words)
                         
                     print(f"[Room {room_id} FLUSH] Text to translate: {chunk_to_translate}")
                     for ws in list(room.websockets):
@@ -147,42 +142,36 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 if not current_text:
                     continue
                 
-                if room.translated_length > len(current_text):
-                    room.translated_length = 0
+                current_words = current_text.split()
+                if room.translated_words_count > len(current_words):
+                    room.translated_words_count = 0
                     
-                pending_text = current_text[room.translated_length:].strip()
-                if not pending_text:
-                    continue
-                    
-                words = pending_text.split()
-                last_char = pending_text[-1]
+                pending_words = current_words[room.translated_words_count:]
                 
-                # Se baja la paciencia a 6 palabras para más velocidad, y se ignora la coma para no cortar frases a medias
-                if last_char in ['.', '?', '!'] or len(words) >= 6:
-                    chunk_to_translate = pending_text
-                    
-                    chunk_index = current_text.find(chunk_to_translate, room.translated_length)
-                    if chunk_index != -1:
-                        room.translated_length = chunk_index + len(chunk_to_translate)
-                    else:
-                        room.translated_length = len(current_text)
+                # Para evitar traducir palabras a medias que Google Meet está corrigiendo en tiempo real (ej: "tradu...ce"),
+                # apartamos las últimas 2 palabras como "zona de volatilidad" y solo traducimos si las palabras seguras llegan a 6.
+                if len(pending_words) > 2:
+                    safe_pending = pending_words[:-2]
+                    if len(safe_pending) >= 6:
+                        chunk_to_translate = " ".join(safe_pending)
+                        room.translated_words_count += len(safe_pending)
                         
-                    print(f"[Room {room_id}] Text to translate: {chunk_to_translate}")
-                    
-                    for ws in list(room.websockets):
-                        try:
-                            await ws.send_json({"type": "caption", "text": chunk_to_translate})
-                        except:
-                            pass
+                        print(f"[Room {room_id}] Text to translate: {chunk_to_translate}")
                         
-                    asyncio.create_task(
-                        process_translation(
-                            room_id, 
-                            chunk_to_translate, 
-                            room.target_lang_name, 
-                            room.target_lang_code
+                        for ws in list(room.websockets):
+                            try:
+                                await ws.send_json({"type": "caption", "text": chunk_to_translate})
+                            except:
+                                pass
+                            
+                        asyncio.create_task(
+                            process_translation(
+                                room_id, 
+                                chunk_to_translate, 
+                                room.target_lang_name, 
+                                room.target_lang_code
+                            )
                         )
-                    )
                         
     except WebSocketDisconnect:
         print(f"[Room {room_id}] Client disconnected")
