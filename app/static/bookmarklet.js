@@ -1,5 +1,5 @@
 ﻿(function(){
-    console.log('[AI Meet] Super Bookmarklet V11 (Pure Spans Fix)!');
+    console.log('[AI Meet] Super Bookmarklet V12 (Smart Menu Ignore)!');
     if (document.getElementById('ai-meet-bridge')) {
         alert('The bot is already running.');
         return;
@@ -71,18 +71,22 @@
 
     setInterval(() => {
         let text = '';
-        // SOLO leemos los spans específicos que contienen las palabras habladas (.iTTPOb)
-        // Ignoramos por completo los contenedores gigantes (.a4cQT) porque cuando abres
-        // el menú de opciones de Meet, esos menús se inyectan dentro del contenedor principal
-        // y el bot los lee por error.
-        let elements = document.querySelectorAll('.iTTPOb'); 
+        let elements = document.querySelectorAll('.a4cQT');
+        if (elements.length === 0) {
+            // Fallback just in case
+            elements = document.querySelectorAll('.a4cQT, .CNusmb, .iTTPOb'); 
+        }
         
-        let len = elements.length;
-        for (let i = 0; i < len; i++) {
-            // Como estos spans SOLO tienen las palabras puras, usar textContent es 100% seguro
-            // y 1000x más rápido que innerText para tu Celeron.
-            let content = elements[i].textContent;
-            if (content) { text += content + ' '; }
+        elements.forEach(el => {
+            if(el.innerText) { text += el.innerText + ' '; }
+        });
+        
+        // Si detectamos que el usuario abrió el menú de idiomas o configuración, ignoramos la lectura
+        if (text.includes('BETA') && (text.includes('Emiratos') || text.includes('Albanés') || text.includes('Filipinas'))) {
+            return;
+        }
+        if (text.includes('DiminutoPequeñoMedio') || text.includes('BlancoNegroAzulVerde')) {
+            return;
         }
         
         const garbageRegex = /language|Español|Inglés|México|format_size|Tamaño de fuente|circle|Color de la fuente|settings|Abrir configuración de subtítulos|Tú|Ir al final|Más opciones|arrow_downward|\(\s*\)/gi;
