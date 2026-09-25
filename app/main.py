@@ -128,11 +128,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 old_words = room.last_text.split()
                 new_words = current_text.split()
                 
-                # Si las palabras nuevas son menos, se borró el contenedor de Google Meet, reseteamos el buffer
-                if len(new_words) < len(old_words):
-                    room.last_text = ""
-                    old_words = []
-                
                 s = difflib.SequenceMatcher(None, old_words, new_words)
                 new_chunk = []
                 
@@ -148,7 +143,6 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                     buffer_str = " ".join(room.sentence_buffer)
                     last_char = buffer_str[-1] if buffer_str else ""
                     
-                    # Restauramos la velocidad EXACTA que le gustaba al usuario: puntuación o 6 palabras
                     if last_char in ['.', '?', '!', ','] or len(room.sentence_buffer) >= 6:
                         print(f"[Room {room_id}] Text to translate: {buffer_str}")
                         
