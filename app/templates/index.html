@@ -13,95 +13,105 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
         body { font-family: 'Roboto', sans-serif; }
         .scrollable-box { height: 280px; overflow-y: auto; padding-right: 8px; }
         .scrollable-box::-webkit-scrollbar { width: 8px; }
         .scrollable-box::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 4px; }
         .dark .scrollable-box::-webkit-scrollbar-thumb { background: #4b5563; }
+        [v-cloak] { display: none; }
     </style>
 </head>
 <body class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
     
-    <!-- EXPERIMENTAL BANNER -->
-    <div class="bg-yellow-100 dark:bg-yellow-900/40 border-b border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 px-4 py-3 text-center text-sm">
-        <i class="fas fa-exclamation-triangle mr-2"></i>
-        <strong>Experimental Project:</strong> This tool is currently using a free API key which may rate-limit or expire. 
-        <a href="https://github.com/ANGELUSD11/meetTTS" target="_blank" class="underline font-medium ml-1 hover:text-yellow-300">
-            Host your own version on GitHub <i class="fab fa-github"></i>
-        </a>
-    </div>
-
-    <!-- THEME TOGGLE -->
-    <div class="absolute top-4 right-4 mt-12 md:mt-2">
-        <button id="themeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-            <i class="fas fa-moon dark:hidden"></i>
-            <i class="fas fa-sun hidden dark:inline"></i>
-        </button>
-    </div>
-
-    <div class="container mx-auto px-4 py-10 max-w-5xl">
-        <!-- HEADER -->
-        <div class="flex flex-col items-center justify-center mb-10 mt-6 md:mt-0">
-            <h1 class="text-3xl font-normal text-gray-800 dark:text-gray-100 mb-2 flex items-center text-center">
-                <span class="text-blue-600 dark:text-blue-400 font-medium mr-2">Google Meet</span> Interpreter
-            </h1>
-            <p class="text-gray-500 dark:text-gray-400 text-sm text-center">Real-time open-source translation via GPT-OSS & gTTS</p>
-            <p id="status" class="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
-                <i class="fas fa-circle text-red-500 text-xs"></i> Disconnected
-            </p>
-        </div>
-
-        <!-- DASHBOARD GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <!-- ORIGINAL TEXT -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col">
-                <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
-                    <h2 class="text-lg font-medium text-gray-700 dark:text-gray-200"><i class="fas fa-closed-captioning text-gray-400 dark:text-gray-500 mr-2"></i> Original Captions</h2>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Auto-detect</span>
-                </div>
-                <div id="transcript" class="scrollable-box space-y-3 font-normal text-sm text-gray-600 dark:text-gray-300">
-                    <div class="text-gray-400 dark:text-gray-500 italic text-center mt-20">Waiting for captions...</div>
-                </div>
-            </div>
-
-            <!-- TRANSLATED TEXT -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 border-t-4 border-t-blue-500 flex flex-col">
-                <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
-                    <h2 class="text-lg font-medium text-gray-700 dark:text-gray-200"><i class="fas fa-language text-blue-500 mr-2"></i> Translation</h2>
-                    <select id="targetLanguage" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm outline-none focus:border-blue-500">
-                        <option value="es" selected>Spanish</option>
-                        <option value="en">English</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="it">Italian</option>
-                        <option value="pt">Portuguese</option>
-                        <option value="ja">Japanese</option>
-                        <option value="zh">Chinese</option>
-                    </select>
-                </div>
-                <div id="translations" class="scrollable-box space-y-3 font-medium text-sm text-gray-800 dark:text-gray-200">
-                    <div class="text-gray-400 dark:text-gray-500 italic font-normal text-center mt-20">Waiting for translations...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SETUP INSTRUCTIONS -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-8 text-center max-w-3xl mx-auto mt-12">
-            <h3 class="text-xl font-medium text-gray-800 dark:text-gray-200 mb-3">How to use</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-8 max-w-xl mx-auto leading-relaxed">
-                Drag the button below to your browser's bookmarks bar. Then, join your Google Meet, <strong>turn on Captions (CC)</strong>, and click the bookmark.
-            </p>
-            <a id="bookmarklet" href="#" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2.5 font-medium transition-colors shadow-sm inline-flex items-center gap-2 cursor-grab">
-                <i class="fas fa-microphone-alt"></i> Translate Google Meet
+    <div id="app" v-cloak>
+        <!-- EXPERIMENTAL BANNER -->
+        <div class="bg-yellow-100 dark:bg-yellow-900/40 border-b border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 px-4 py-3 text-center text-sm">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Experimental Project:</strong> This tool is currently using a free API key which may rate-limit or expire. 
+            <a href="https://github.com/ANGELUSD11/meetTTS" target="_blank" class="underline font-medium ml-1 hover:text-yellow-300">
+                Host your own version on GitHub <i class="fab fa-github"></i>
             </a>
         </div>
 
-        <!-- FOOTER -->
-        <footer class="mt-16 text-center text-sm text-gray-500 dark:text-gray-400 pb-8">
-            Created by <a href="https://angelus11.dev" target="_blank" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium">ANGELUS11</a>. 
-            Free to use, but we highly recommend <a href="https://github.com/ANGELUSD11/meetTTS" target="_blank" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">hosting your own version</a> with your own API key.
-        </footer>
+        <!-- THEME TOGGLE -->
+        <div class="absolute top-4 right-4 mt-12 md:mt-2">
+            <button @click="toggleDarkMode" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                <i class="fas fa-moon" v-if="!isDarkMode"></i>
+                <i class="fas fa-sun" v-else></i>
+            </button>
+        </div>
+
+        <div class="container mx-auto px-4 py-10 max-w-5xl">
+            <!-- HEADER -->
+            <div class="flex flex-col items-center justify-center mb-10 mt-6 md:mt-0">
+                <h1 class="text-3xl font-normal text-gray-800 dark:text-gray-100 mb-2 flex items-center text-center">
+                    <span class="text-blue-600 dark:text-blue-400 font-medium mr-2">Google Meet</span> Interpreter
+                </h1>
+                <p class="text-gray-500 dark:text-gray-400 text-sm text-center">Real-time open-source translation via GPT-OSS & gTTS</p>
+                <p class="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
+                    <i class="fas fa-circle text-xs" :class="statusColor"></i> [[ statusMessage ]]
+                </p>
+            </div>
+
+            <!-- DASHBOARD GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- ORIGINAL TEXT -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col">
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
+                        <h2 class="text-lg font-medium text-gray-700 dark:text-gray-200"><i class="fas fa-closed-captioning text-gray-400 dark:text-gray-500 mr-2"></i> Original Captions</h2>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Auto-detect</span>
+                    </div>
+                    <div ref="transcriptEl" class="scrollable-box space-y-3 font-normal text-sm text-gray-600 dark:text-gray-300">
+                        <div v-if="captions.length === 0" class="text-gray-400 dark:text-gray-500 italic text-center mt-20">Waiting for captions...</div>
+                        <div v-for="(cap, i) in captions" :key="'c'+i" class="bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                            [[ cap ]]
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TRANSLATED TEXT -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 border-t-4 border-t-blue-500 flex flex-col">
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
+                        <h2 class="text-lg font-medium text-gray-700 dark:text-gray-200"><i class="fas fa-language text-blue-500 mr-2"></i> Translation</h2>
+                        <select v-model="targetLanguage" @change="changeLanguage" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm outline-none focus:border-blue-500">
+                            <option value="es">Spanish</option>
+                            <option value="en">English</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="it">Italian</option>
+                            <option value="pt">Portuguese</option>
+                            <option value="ja">Japanese</option>
+                            <option value="zh">Chinese</option>
+                        </select>
+                    </div>
+                    <div ref="translationsEl" class="scrollable-box space-y-3 font-medium text-sm text-gray-800 dark:text-gray-200">
+                        <div v-if="translations.length === 0" class="text-gray-400 dark:text-gray-500 italic font-normal text-center mt-20">Waiting for translations...</div>
+                        <div v-for="(trans, i) in translations" :key="'t'+i" class="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50 text-blue-900 dark:text-blue-100">
+                            [[ trans ]]
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETUP INSTRUCTIONS -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-8 text-center max-w-3xl mx-auto mt-12">
+                <h3 class="text-xl font-medium text-gray-800 dark:text-gray-200 mb-3">How to use</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-8 max-w-xl mx-auto leading-relaxed">
+                    Drag the button below to your browser's bookmarks bar. Then, join your Google Meet, <strong>turn on Captions (CC)</strong>, and click the bookmark.
+                </p>
+                <a :href="bookmarkletHref" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2.5 font-medium transition-colors shadow-sm inline-flex items-center gap-2 cursor-grab">
+                    <i class="fas fa-microphone-alt"></i> Translate Google Meet
+                </a>
+            </div>
+
+            <!-- FOOTER -->
+            <footer class="mt-16 text-center text-sm text-gray-500 dark:text-gray-400 pb-8">
+                Created by <a href="https://angelus11.dev" target="_blank" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium">ANGELUS11</a>. 
+                Free to use, but we highly recommend <a href="https://github.com/ANGELUSD11/meetTTS" target="_blank" class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">hosting your own version</a> with your own API key.
+            </footer>
+        </div>
     </div>
 
     <!-- RAW JAVASCRIPT INJECTED BY PYTHON -->
@@ -110,85 +120,108 @@
     </script>
 
     <script>
-        // 0. Dark Mode Logic
-        const themeToggleBtn = document.getElementById('themeToggle');
-        
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        const { createApp, ref, onMounted, nextTick } = Vue;
 
-        themeToggleBtn.addEventListener('click', function() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('color-theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('color-theme', 'dark');
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const isDarkMode = ref(false);
+                const statusMessage = ref('Connecting...');
+                const statusColor = ref('text-yellow-500');
+                const captions = ref([]);
+                const translations = ref([]);
+                const targetLanguage = ref('es');
+                const roomId = ref('');
+                const bookmarkletHref = ref('#');
+                const transcriptEl = ref(null);
+                const translationsEl = ref(null);
+                let ws = null;
+
+                const toggleDarkMode = () => {
+                    isDarkMode.value = !isDarkMode.value;
+                    if (isDarkMode.value) {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    }
+                };
+
+                const scrollToBottom = (el) => {
+                    nextTick(() => {
+                        if (el.value) {
+                            el.value.scrollTop = el.value.scrollHeight;
+                        }
+                    });
+                };
+
+                const changeLanguage = () => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({action: 'set_language', lang: targetLanguage.value}));
+                    }
+                };
+
+                const initWebSocket = () => {
+                    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                    ws = new WebSocket(protocol + window.location.host + '/ws/' + roomId.value);
+
+                    ws.onopen = () => {
+                        statusMessage.value = 'Connected to Server';
+                        statusColor.value = 'text-green-500';
+                        changeLanguage();
+                    };
+
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'status') {
+                            statusMessage.value = data.message;
+                            statusColor.value = 'text-green-500';
+                        } else if (data.type === 'caption') {
+                            captions.value.push(data.text);
+                            scrollToBottom(transcriptEl);
+                        } else if (data.type === 'translation') {
+                            translations.value.push(data.text);
+                            scrollToBottom(translationsEl);
+                        }
+                    };
+
+                    ws.onclose = () => {
+                        statusMessage.value = 'Disconnected. Reconnecting...';
+                        statusColor.value = 'text-red-500';
+                        setTimeout(initWebSocket, 3000);
+                    };
+                };
+
+                onMounted(() => {
+                    // Theme init
+                    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                        isDarkMode.value = true;
+                        document.documentElement.classList.add('dark');
+                    }
+
+                    // Room ID init
+                    let storedRoomId = localStorage.getItem('tts_room_id');
+                    if (!storedRoomId) {
+                        storedRoomId = 'room_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem('tts_room_id', storedRoomId);
+                    }
+                    roomId.value = storedRoomId;
+
+                    // Compile Bookmarklet
+                    const rawCode = document.getElementById('raw-bookmarklet-code').textContent;
+                    bookmarkletHref.value = 'javascript:window.TTS_ROOM_ID="' + roomId.value + '";' + encodeURIComponent(rawCode);
+
+                    // Connect WS
+                    initWebSocket();
+                });
+
+                return {
+                    isDarkMode, statusMessage, statusColor, captions, translations, targetLanguage,
+                    bookmarkletHref, toggleDarkMode, changeLanguage, transcriptEl, translationsEl
+                };
             }
-        });
-
-        // 1. Session ID Logic
-        let roomId = localStorage.getItem('tts_room_id');
-        if (!roomId) {
-            roomId = 'room_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('tts_room_id', roomId);
-        }
-
-        // 2. Compile Bookmarklet
-        const rawCode = document.getElementById('raw-bookmarklet-code').textContent;
-        const encodedUrl = 'javascript:window.TTS_ROOM_ID="' + roomId + '";' + encodeURIComponent(rawCode);
-        document.getElementById('bookmarklet').href = encodedUrl;
-
-        // 3. WebSocket Logic
-        const statusEl = document.getElementById('status');
-        const transcriptEl = document.getElementById('transcript');
-        const translationsEl = document.getElementById('translations');
-        const langSelect = document.getElementById('targetLanguage');
-        
-        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        let ws = new WebSocket(protocol + window.location.host + '/ws/' + roomId);
-
-        ws.onopen = () => {
-            statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> Connected to Server';
-            ws.send(JSON.stringify({action: 'set_language', lang: langSelect.value}));
-        };
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'status') {
-                statusEl.innerHTML = '<i class="fas fa-circle text-green-500 text-xs"></i> ' + data.message;
-            }
-            else if (data.type === 'caption') {
-                if (transcriptEl.innerHTML.includes('Waiting')) transcriptEl.innerHTML = '';
-                const div = document.createElement('div');
-                div.className = 'bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600';
-                div.textContent = data.text;
-                transcriptEl.appendChild(div);
-                transcriptEl.scrollTop = transcriptEl.scrollHeight;
-            }
-            else if (data.type === 'translation') {
-                if (translationsEl.innerHTML.includes('Waiting')) translationsEl.innerHTML = '';
-                const div = document.createElement('div');
-                div.className = 'bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-100 dark:border-blue-800/50 text-blue-900 dark:text-blue-100';
-                div.textContent = data.text;
-                translationsEl.appendChild(div);
-                translationsEl.scrollTop = translationsEl.scrollHeight;
-            }
-        };
-
-        ws.onclose = () => {
-            statusEl.innerHTML = '<i class="fas fa-circle text-red-500 text-xs"></i> Disconnected. Reconnecting...';
-        };
-
-        // Listen for language changes
-        langSelect.addEventListener('change', (e) => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({action: 'set_language', lang: e.target.value}));
-            }
-        });
+        }).mount('#app');
     </script>
 </body>
 </html>
